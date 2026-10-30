@@ -23,7 +23,8 @@ const bar = (w: string, h = 16) => `<span class="sk" style="width:${w};height:${
 const repeat = (n: number, html: string) => html.repeat(n);
 
 /** 내비게이션이 올 자리. 높이만 차지하고 아무것도 그리지 않는다. */
-const space = (h: number, w = '100%') => `<span class="sk-space" style="width:${w};height:${h}px"></span>`;
+const space = (h: number, w = '100%') =>
+  `<span class="sk-space" style="width:${w};height:${h}px"></span>`;
 
 const head = (title: string, filter: boolean) =>
   `<div class="sk-head container-page"><h1 class="sk-title">${title}</h1>${filter ? space(36, 'min(320px, 100%)') : ''}</div>`;
