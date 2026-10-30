@@ -50,7 +50,7 @@ if (contact.github) links.push({ label: 'GitHub', href: contact.github });
     display: flex;
     flex-direction: column;
     gap: 32px;
-    padding: 56px 0 120px;
+    padding: 56px 0 calc(108px + env(safe-area-inset-bottom));
     background: var(--color-card);
     font-size: 13px;
     line-height: 18px;

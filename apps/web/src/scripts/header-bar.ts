@@ -26,8 +26,16 @@ if (header && clearZones.length > 0) {
 
   observe();
   let timer = 0;
+  let lastWidth = window.innerWidth;
   window.addEventListener('resize', () => {
+    // 모바일 주소창이 접히고 펴질 때는 높이만 바뀐다. 그때마다 다시 관찰하면 막대가 깜빡이므로 폭이 바뀔 때(회전·접기/펴기·창 크기)만 다시 잰다.
+    if (window.innerWidth === lastWidth) return;
+    lastWidth = window.innerWidth;
     clearTimeout(timer);
     timer = window.setTimeout(observe, 150);
+  });
+  window.addEventListener('orientationchange', () => {
+    clearTimeout(timer);
+    timer = window.setTimeout(observe, 300);
   });
 }
