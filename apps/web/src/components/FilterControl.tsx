@@ -25,12 +25,18 @@ export default function FilterControl({ label, param, options, unit }: Props) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const thumbRef = useRef<HTMLSpanElement>(null);
   const mounted = useRef(false);
+  // URL에서 읽은 값. FilterBoot가 첫 페인트 전에 이미 적용했으므로 다시 움직이지 않고 상태만 맞춘다.
+  const fromUrl = useRef<string | null>(null);
   const [thumbReady, setThumbReady] = useState(false);
 
   // 첫 렌더는 서버 HTML과 같게(전체) 두고, 마운트 뒤 URL 값을 읽는다(하이드레이션 불일치 방지).
   useEffect(() => {
-    setValue(readParam(param, options));
-    const onPop = () => setValue(readParam(param, options));
+    const sync = () => {
+      fromUrl.current = readParam(param, options);
+      setValue(fromUrl.current);
+    };
+    sync();
+    const onPop = sync;
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [param, options]);
@@ -51,14 +57,20 @@ export default function FilterControl({ label, param, options, unit }: Props) {
   }, [value, all, thumbReady]);
 
   useEffect(() => {
-    const shown = mounted.current
-      ? applyFilterWithTransition(param, value)
-      : applyFilter(param, value);
-    if (mounted.current) {
-      writeParam(param, value);
-      setStatus(`${value === ALL ? '전체' : value} ${shown}${unit}`);
+    // 첫 실행(전체)과 URL 동기화는 화면을 다시 바꾸지 않는다. 예전에는 여기서 전체를 잠깐 보였다가
+    // 다시 숨겨 카드가 한 번 튀었다(레이아웃 이동).
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
     }
-    mounted.current = true;
+    if (value === fromUrl.current) {
+      applyFilter(param, value);
+      fromUrl.current = null;
+      return;
+    }
+    const shown = applyFilterWithTransition(param, value);
+    writeParam(param, value);
+    setStatus(`${value === ALL ? '전체' : value} ${shown}${unit}`);
   }, [param, value, unit]);
 
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -67,6 +79,7 @@ export default function FilterControl({ label, param, options, unit }: Props) {
     if (step === undefined && edge === undefined) return;
     event.preventDefault();
     const next = edge ?? (index + (step ?? 0) + all.length) % all.length;
+    fromUrl.current = null;
     setValue(all[next] ?? ALL);
     refs.current[next]?.focus();
   };
@@ -93,7 +106,10 @@ export default function FilterControl({ label, param, options, unit }: Props) {
               aria-checked={selected}
               tabIndex={selected ? 0 : -1}
               className="segment"
-              onClick={() => setValue(option)}
+              onClick={() => {
+                fromUrl.current = null;
+                setValue(option);
+              }}
               onKeyDown={(e) => onKeyDown(e, i)}
             >
               {option}
