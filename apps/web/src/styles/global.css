@@ -312,14 +312,14 @@ html body {
     background: var(--surface-1);
   }
 
-  /* 유리 재질(Liquid Glass 근사): 옅은 틴트 + 위쪽이 살짝 밝은 광택 + 강한 흐림. 테두리·바깥 그림자 없음,
+  /* 유리 재질(Liquid Glass 근사): 진한 반투명 바탕(72%) + 위쪽이 살짝 밝은 광택 + 강한 흐림. 테두리·바깥 그림자 없음,
      위쪽 안쪽 하이라이트만 둔다(유리 가장자리의 반사). */
   .glass {
     background:
       linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.03) 60%),
-      rgb(28 28 30 / 0.42);
-    -webkit-backdrop-filter: blur(24px) saturate(1.8) brightness(1.08);
-    backdrop-filter: blur(24px) saturate(1.8) brightness(1.08);
+      rgb(44 44 46 / 0.72);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    backdrop-filter: blur(30px) saturate(1.8);
     box-shadow:
       inset 0 1px 1.5px -0.5px rgb(255 255 255 / 0.35),
       inset 0 -8px 16px -12px rgb(255 255 255 / 0.12);

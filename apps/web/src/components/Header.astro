@@ -62,9 +62,9 @@ const { recruit } = (await loadSiteData()).settings;
     position: absolute;
     inset: 0;
     /* 테두리 없이 반투명 바탕 + 흐림만(사용자 결정: 모든 요소에 보더 없음) */
-    background: rgb(28 28 30 / 0.7);
-    -webkit-backdrop-filter: blur(20px);
-    backdrop-filter: blur(20px);
+    background: rgb(28 28 30 / 0.78);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    backdrop-filter: blur(30px) saturate(1.8);
     opacity: 1;
     transition: opacity var(--fade-dur) ease;
     pointer-events: none;
@@ -76,10 +76,10 @@ const { recruit } = (await loadSiteData()).settings;
   .site-header[data-bar="off"]::before {
     opacity: 0;
   }
-  /* 페이지 이동 때 내비 내용은 제자리에 둔다. 이름을 .site-header에 두면 헤더가 backdrop root가 되어
-     ::before의 흐림이 아무것도 못 본다(Chromium) → 안쪽 상자에 둔다. */
+  /* 페이지 이동 때 내비 내용은 제자리에 둔다. view-transition-name을 가진 요소는 backdrop root가 되어
+     그 안쪽의 흐림은 바깥(본문)을 못 본다(Chromium). 그래서 감싸는 상자가 아니라 로고·탭 알약·버튼에 각각 단다.
+     탭 알약은 이름이 자기 자신에 있어 흐림이 본문을 그대로 본다. */
   .site-header-inner {
-    view-transition-name: site-header;
     position: relative;
     display: flex;
     align-items: center;
@@ -88,6 +88,7 @@ const { recruit } = (await loadSiteData()).settings;
     min-height: 44px;
   }
   .brand {
+    view-transition-name: site-brand;
     display: inline-flex;
     align-items: center;
     gap: 10px;
@@ -110,10 +111,14 @@ const { recruit } = (await loadSiteData()).settings;
     padding: 4px;
     list-style: none;
     border-radius: 1000px;
-    background: linear-gradient(180deg, var(--fill-1), rgb(255 255 255 / 0.05));
+    view-transition-name: site-tabs;
+    /* 유리: 진한 반투명 바탕(72%) + 강한 흐림으로 뒤 글자가 읽히지 않고 색과 밝기만 비친다(Apple thick material에 가깝게) */
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.03) 60%),
+      rgb(44 44 46 / 0.72);
     box-shadow: inset 0 1px 1.5px -0.5px rgb(255 255 255 / 0.3);
-    -webkit-backdrop-filter: blur(24px) saturate(1.8);
-    backdrop-filter: blur(24px) saturate(1.8);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    backdrop-filter: blur(30px) saturate(1.8);
   }
   .top-tabs a {
     display: inline-flex;
@@ -134,6 +139,10 @@ const { recruit } = (await loadSiteData()).settings;
     background: var(--accent-soft);
     color: var(--accent-on-soft);
     font-weight: 600;
+  }
+
+  .header-cta {
+    view-transition-name: site-cta;
   }
 
   /* 지원하기 버튼이 없을 때도 탭이 가운데에 오도록 같은 폭의 빈 자리를 둔다 */
