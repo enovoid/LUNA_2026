@@ -136,6 +136,9 @@ async function start(root: HTMLElement) {
     stage.style.setProperty('--hole', `${(m.moonPx / 2).toFixed(1)}px`);
   };
 
+  // 구름이 닫히는 정도(1이면 완전히 닫힘). 0.64 = 로고 아랫부분과 오른쪽 일부만 가린 위치(사용자 지정).
+  const CLOUD_CLOSE = 0.64;
+
   const render = () => {
     const c = mobileQuery.matches ? config.mobile : config.desktop;
     const logZoom = Math.log(c.zoom);
@@ -172,7 +175,8 @@ async function start(root: HTMLElement) {
     title.style.transform = `translate3d(0, ${(24 * (1 - s.title)).toFixed(1)}px, 0)`;
 
     // 구름: 자기 크기 기준 %로 화면 밖(102%)에서 제자리로. 가로로는 서로 반대로 흐른다. 로고 위를 덮는다.
-    const open = 1 - s.cloud;
+    // 구름은 끝까지 닫히지 않고 로고 아랫부분·오른쪽 일부만 가린 채(정적 화면과 같은 위치) 멈춘다.
+    const open = 1 - s.cloud * CLOUD_CLOSE;
     cloudTop.style.transform = `translate3d(${(8 * open).toFixed(2)}%, ${(-102 * open).toFixed(2)}%, 0)`;
     cloudBottom.style.transform = `translate3d(${(-50 - 6 * open).toFixed(2)}%, ${(102 * open).toFixed(2)}%, 0)`;
     fade.style.opacity = s.fade.toFixed(3);
