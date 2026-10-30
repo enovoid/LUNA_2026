@@ -1,0 +1,104 @@
+---
+// 두께가 있는 3D 루나 로고(홈 첫 화면용). 앞면은 원래 로고(luna.svg) 그대로이고,
+// 그 뒤에 초승달 외곽선을 조금씩 뒤로 밀며 겹쳐 옆면(두께)을 만든 뒤 천천히 좌우로 기울인다.
+// 크기는 감싸는 상자를 그대로 채운다(레이아웃 변화 없음). 움직임은 transform만 쓴다.
+// 움직임 줄이기 설정이거나 3D 변환을 못 쓰는 브라우저면 옆면을 숨겨 원래 2D 로고만 보인다.
+import Logo from './Logo.astro';
+
+interface Props {
+  label?: string;
+}
+const { label } = Astro.props;
+
+// luna.svg 첫 번째 path(초승달 전체 외곽). 옆면은 이 모양을 단색으로 겹친다.
+const outline =
+  'M737.1 205.169C704.138 184.214 664.487 171.99 621.822 171.99C507.347 171.99 414.548 259.992 414.548 368.55C414.548 477.108 507.347 565.11 621.822 565.11C664.487 565.11 704.138 552.887 737.1 531.931C673.589 653.511 541.407 737.1 388.639 737.1C174 737.1 0 572.095 0 368.55C0 165.006 174 0.00012207 388.639 0.00012207C541.407 0.00012207 673.589 83.5892 737.1 205.169Z';
+
+// 옆면 층 수. 많을수록 매끈하지만 합성할 층이 늘어난다.
+const LAYERS = 24;
+// 앞쪽(밝은 보라) → 뒤쪽(어두운 남색)으로 옆면 색을 섞는다.
+const mix = (t: number) => {
+  const from = [0x5c, 0x52, 0xb0];
+  const to = [0x16, 0x14, 0x2a];
+  return `rgb(${from.map((c, i) => Math.round(c + ((to[i] ?? c) - c) * t)).join(' ')})`;
+};
+const layers = Array.from({ length: LAYERS }, (_, i) => ({
+  depth: (i + 1) / LAYERS,
+  fill: mix(i / (LAYERS - 1)),
+}));
+---
+
+<div class="logo3d">
+  <div class="logo3d-body">
+    {
+      layers.map((l) => (
+        <svg class="logo3d-side" style={`--d:${l.depth}`} viewBox="0 0 738 738" aria-hidden="true" focusable="false">
+          <path d={outline} fill={l.fill} />
+        </svg>
+      ))
+    }
+    <div class="logo3d-front">
+      <Logo size="100%" label={label} />
+    </div>
+  </div>
+</div>
+
+<style>
+  .logo3d {
+    /* 두께: 로고 폭의 14%. 원근은 로고 크기에 비례해 화면 크기와 무관하게 같은 느낌. */
+    --depth: 14cqi;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    container-type: inline-size;
+    perspective: 420cqi;
+  }
+  .logo3d-body {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    animation: logo3d-sway 9s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  .logo3d-side,
+  .logo3d-front {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    backface-visibility: visible;
+  }
+  .logo3d-side {
+    display: block;
+    transform: translate3d(0, 0, calc(var(--depth) * var(--d) * -1));
+  }
+  .logo3d-front {
+    transform: translate3d(0, 0, 0.5px);
+  }
+  /* 오른쪽(글자 쪽)으로 열린 초승달이라 왼쪽 옆면이 보이는 쪽으로 더 기울인다 */
+  @keyframes logo3d-sway {
+    from {
+      transform: rotateX(8deg) rotateY(-26deg);
+    }
+    to {
+      transform: rotateX(-4deg) rotateY(14deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo3d-body {
+      animation: none;
+    }
+    .logo3d-side {
+      display: none;
+    }
+  }
+  @supports not (transform-style: preserve-3d) {
+    .logo3d-body {
+      animation: none;
+    }
+    .logo3d-side {
+      display: none;
+    }
+  }
+</style>

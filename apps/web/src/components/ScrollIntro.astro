@@ -8,8 +8,9 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { site } from '../content/site';
 import Logo from './Logo.astro';
+import Logo3D from './Logo3D.astro';
 
-const { usePhotos, desktop, mobile, mobileMedia, clouds } = site.introScene;
+const { usePhotos, desktop, mobile, mobileMedia, clouds, logo3d } = site.introScene;
 // 달 고해상도 파일이 둘 다 있을 때만 겹친다(없으면 깨진 이미지 대신 원래 사진만 보인다).
 const hasMoonDetail = [desktop.moonDetail, mobile.moonDetail].every((src) =>
   existsSync(join(process.cwd(), 'public', src)),
@@ -112,7 +113,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
       <div class="lockup">
         <div class="lockup-logo" data-measure="logo">
           <div class="lockup-logo-inner" data-layer="logo">
-            <Logo size="100%" label="루나 로고" />
+            {logo3d ? <Logo3D label="루나 로고" /> : <Logo size="100%" label="루나 로고" />}
           </div>
         </div>
         <div class="lockup-window" aria-hidden="true">
