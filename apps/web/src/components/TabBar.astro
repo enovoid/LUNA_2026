@@ -1,0 +1,97 @@
+---
+// 좁은 화면 하단에 떠 있는 탭 바(디자인 시스템 TabBar bottom). 홈 인트로 동안에도 보인다.
+import type { NavKey } from '../content/site';
+
+interface Props {
+  current: NavKey | null;
+}
+const { current } = Astro.props;
+
+const tabs = [
+  { key: 'home', label: '홈', href: '/', d: 'M3.5 9 10 3.5 16.5 9v7.5h-4.5v-5h-4v5H3.5z' },
+  {
+    key: 'members',
+    label: '멤버',
+    href: '/members',
+    d: 'M10 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 17.5a6.5 6.5 0 0 1 13 0',
+  },
+  { key: 'projects', label: '프로젝트', href: '/projects', d: 'M2.5 5.5v10h15v-8H9.5L8 5.5z' },
+  {
+    key: 'awards',
+    label: '수상',
+    href: '/awards',
+    d: 'M10 12.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM7 11.5 6 17.5l4-2 4 2-1-6',
+  },
+] as const;
+---
+
+<nav class="tab-bar" aria-label="주 메뉴">
+  <ul class="glass">
+    {
+      tabs.map((tab) => (
+        <li>
+          <a href={tab.href} aria-current={tab.key === current ? "page" : undefined}>
+            <svg viewBox="0 0 20 20" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d={tab.d} />
+            </svg>
+            <span>{tab.label}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  .tab-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 40;
+    display: flex;
+    justify-content: center;
+    padding-inline: 16px;
+    pointer-events: none;
+  }
+  ul {
+    display: flex;
+    width: 100%;
+    max-width: 360px;
+    height: 62px;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    border-radius: 1000px;
+    pointer-events: auto;
+  }
+  li {
+    flex: 1;
+  }
+  a {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    border-radius: 1000px;
+    color: #1c1c1e;
+    font-size: 10px;
+    line-height: 12px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  a[aria-current="page"] {
+    color: var(--color-brand-violet);
+    background: var(--color-lavender-tint);
+  }
+  a:active {
+    opacity: 0.6;
+  }
+  @media (min-width: 768px) {
+    .tab-bar {
+      display: none;
+    }
+  }
+</style>

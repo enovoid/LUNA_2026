@@ -1,0 +1,91 @@
+---
+import EmptyState from '../components/EmptyState.astro';
+import Filter from '../components/Filter.astro';
+import FilterBoot from '../components/FilterBoot.astro';
+import MemberCard from '../components/MemberCard.astro';
+import PageHead from '../components/PageHead.astro';
+import Base from '../layouts/Base.astro';
+import { groupMembersByGeneration, uniqueSorted } from '../lib/content';
+import { loadSiteData } from '../lib/data';
+
+const { members } = await loadSiteData();
+const groups = groupMembersByGeneration(members);
+const positions = uniqueSorted(members.map((m) => m.position));
+---
+
+<Base title="멤버" description="루나를 만들어 가는 사람들을 기수별로 소개합니다." current="members">
+  <PageHead title="멤버" lead="루나를 만들어 가는 사람들입니다.">
+    <Filter label="직군" param="position" options={positions} unit="명" />
+  </PageHead>
+
+  <div class="container-page page-body" data-filter-scope="position">
+    {
+      groups.length === 0 ? (
+        <EmptyState title="아직 소개할 멤버가 없어요" message="멤버가 등록되면 기수별로 보여요." />
+      ) : (
+        groups.map((g) => (
+          <section class="gen" data-filter-group aria-labelledby={`gen-${g.generation}`}>
+            <div class="gen-head">
+              <h2 id={`gen-${g.generation}`}>{g.generation}</h2>
+              <span>{g.members.length}명</span>
+            </div>
+            <ul class="member-grid">
+              {g.members.map((m) => (
+                <li data-filter-item data-position={m.position}>
+                  <MemberCard member={m} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )
+    }
+    <EmptyState title="이 직군의 멤버가 없어요" message="다른 직군을 골라 보세요." filterEmpty />
+  </div>
+  <FilterBoot param="position" />
+</Base>
+
+<style>
+  .page-body {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    padding-top: 32px;
+    padding-bottom: 96px;
+  }
+  .gen {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .gen-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .gen-head h2 {
+    margin: 0;
+    font-size: 28px;
+    line-height: 34px;
+    font-weight: 700;
+  }
+  .gen-head span {
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--color-label-2);
+  }
+  .member-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 768px) {
+    .member-grid {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+  }
+</style>

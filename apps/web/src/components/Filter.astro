@@ -1,0 +1,60 @@
+---
+// 필터 컨트롤 + 첫 페인트 전 URL 쿼리 적용.
+// 인라인 스크립트가 카드 목록보다 뒤에서 먼저 숨길 카드를 숨겨, 섬이 깨어날 때 레이아웃이 흔들리지 않게 한다.
+import FilterControl from './FilterControl';
+
+interface Props {
+  label: string;
+  param: string;
+  options: string[];
+  unit: string;
+}
+const { label, param, options, unit } = Astro.props;
+---
+
+{options.length > 1 && <FilterControl client:load label={label} param={param} options={options} unit={unit} />}
+
+<style is:global>
+  .segmented-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-radius: 1000px;
+  }
+  .segmented-wrap::-webkit-scrollbar {
+    display: none;
+  }
+  .segmented {
+    display: inline-flex;
+    gap: 4px;
+    padding: 2px;
+    border-radius: 1000px;
+    background: var(--color-fill-3);
+    white-space: nowrap;
+  }
+  .segment {
+    min-width: 64px;
+    height: 32px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 1000px;
+    background: transparent;
+    color: var(--color-label);
+    font: inherit;
+    font-size: 13.33px;
+    line-height: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s, box-shadow 0.15s;
+  }
+  .segment[aria-checked='true'] {
+    background: var(--misc-segmented-control-selected-fill);
+    box-shadow: var(--shadow-segment-selected), 0 0 0 0.5px #0000000a;
+    font-weight: 600;
+    color: var(--color-brand-violet);
+  }
+  .segment:focus-visible {
+    outline: 2px solid var(--color-brand-violet);
+    outline-offset: -2px;
+  }
+</style>

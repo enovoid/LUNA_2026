@@ -1,13 +1,427 @@
 ---
-// 웹사이트 스레드가 교체할 자리표시 페이지
+import EmptyState from '../components/EmptyState.astro';
+import Logo from '../components/Logo.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import ScrollIntro from '../components/ScrollIntro.astro';
+import { isRecruiting, site } from '../content/site';
+import Base from '../layouts/Base.astro';
+import {
+  computeStats,
+  formatDate,
+  formatWon,
+  sortAwards,
+  sortFaqs,
+  sortProjects,
+  textToParagraphs,
+} from '../lib/content';
+import { loadSiteData } from '../lib/data';
+
+const { members, awards, projects, faqs } = await loadSiteData();
+const stats = computeStats(members, awards);
+const sortedFaqs = sortFaqs(faqs);
+const intro = sortedFaqs[0]?.answer ?? '';
+const latestProjects = sortProjects(projects).slice(0, 3);
+const latestAwards = sortAwards(awards).slice(0, 3);
+const statItems = [
+  { value: `${stats.awardCount.toLocaleString('ko-KR')}회`, label: '대회 수상' },
+  { value: formatWon(stats.prizeTotal), label: '누적 상금' },
+  { value: `${stats.memberCount.toLocaleString('ko-KR')}명`, label: '함께한 멤버' },
+];
 ---
-<html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LUNA</title>
-  </head>
-  <body>
-    <h1>LUNA</h1>
-  </body>
-</html>
+
+<Base current="home" overlayHeader>
+  <ScrollIntro slot="hero" />
+
+  <section class="about on-dark" data-tone="dark" aria-label="루나 소개">
+    <div class="about-inner" data-reveal>
+      {intro ? textToParagraphs(intro).map((p) => <p class="about-text">{p}</p>) : <p class="about-text">세상을 비추는 달, LUNA</p>}
+      <div class="about-actions">
+        <a href="/projects" class="btn btn-primary-dark">프로젝트 둘러보기</a>
+        <a href={isRecruiting ? "#apply" : "#faq"} class="btn btn-ghost-dark">지원 안내</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="home-sections">
+    <section aria-labelledby="stats-title" class="container-page">
+      <h2 id="stats-title" class="sr-only">루나의 성과</h2>
+      <ul class="stats" data-reveal>
+        {
+          statItems.map((s) => (
+            <li class="stat card">
+              <span class="stat-value">{s.value}</span>
+              <span class="stat-label">{s.label}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section id="projects" aria-labelledby="projects-title" class="container-page">
+      <div class="section-stack" data-reveal>
+        <div class="section-head">
+          <h2 id="projects-title">프로젝트</h2>
+          {latestProjects.length > 0 && <a href="/projects" class="more-link">모두 보기</a>}
+        </div>
+        {
+          latestProjects.length > 0 ? (
+            <ul class="project-grid">
+              {latestProjects.map((p) => (
+                <li>
+                  <ProjectCard project={p} compact headingLevel={3} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="아직 소개할 프로젝트가 없어요" message="프로젝트가 등록되면 이곳에 보여요." />
+          )
+        }
+      </div>
+    </section>
+
+    <section id="awards" aria-labelledby="awards-title" class="container-page">
+      <div class="split" data-reveal>
+        <div class="split-aside">
+          <h2 id="awards-title">수상</h2>
+          <p>대회에서 거둔 성과를 연도별로 기록합니다.</p>
+          {latestAwards.length > 0 && <a href="/awards" class="more-link">전체 수상 기록</a>}
+        </div>
+        <div class="split-main">
+          {
+            latestAwards.length > 0 ? (
+              <ul class="list card">
+                {latestAwards.map((a) => (
+                  <li>
+                    <a href={`/awards?year=${encodeURIComponent(a.year)}`} class="list-row">
+                      <span class="list-text">
+                        <span class="list-title">{a.name}</span>
+                        <span class="list-sub">{[a.prize, a.team && `팀 ${a.team}`, formatDate(a.date)].filter(Boolean).join(" · ")}</span>
+                      </span>
+                      {a.prizeMoney ? <span class="list-detail">{formatWon(a.prizeMoney)}</span> : null}
+                      <span class="list-chevron" aria-hidden="true">›</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState title="아직 등록된 수상 기록이 없어요" />
+            )
+          }
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" aria-labelledby="faq-title" class="container-page">
+      <div class="split" data-reveal>
+        <div class="split-aside">
+          <h2 id="faq-title">자주 묻는 질문</h2>
+          <p>지원 전에 궁금한 점을 모았습니다.</p>
+        </div>
+        <div class="split-main">
+          {
+            sortedFaqs.length > 0 ? (
+              <div class="faq card">
+                {sortedFaqs.map((f, i) => (
+                  <details open={i === 0}>
+                    <summary>
+                      <span>{f.question}</span>
+                      <span class="faq-chev" aria-hidden="true">›</span>
+                    </summary>
+                    <p>{f.answer}</p>
+                  </details>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="준비 중인 질문이 없어요" message={site.contact.email ? `궁금한 점은 ${site.contact.email}로 물어봐 주세요.` : undefined} />
+            )
+          }
+        </div>
+      </div>
+    </section>
+
+    {
+      isRecruiting && (
+        <section id="apply" aria-labelledby="apply-title" class="container-page">
+          <div class="apply on-dark" data-reveal>
+            <Logo size={320} class="apply-mark" />
+            <div class="apply-text">
+              <span class="apply-eyebrow">RECRUITING</span>
+              <h2 id="apply-title">LUNA {site.recruit.generation} 멤버 모집</h2>
+              <p>{[site.recruit.period, site.recruit.target].filter(Boolean).join(" · ")}</p>
+            </div>
+            <a href={site.recruit.applyUrl} class="btn btn-primary-dark apply-cta" target="_blank" rel="noopener">
+              지원서 작성하기<span class="sr-only">(새 창)</span>
+            </a>
+          </div>
+        </section>
+      )
+    }
+  </div>
+</Base>
+
+<style>
+  .about {
+    display: flex;
+    justify-content: center;
+    padding: 96px 24px 120px;
+    background: var(--color-brand-night);
+    color: #fff;
+  }
+  .about-inner {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+  }
+  .about-text {
+    margin: 0;
+    font-size: clamp(22px, 3.2vw, 40px);
+    line-height: 1.45;
+    font-weight: 600;
+  }
+  .about-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .home-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+    padding: 80px 0 96px;
+  }
+  @media (min-width: 768px) {
+    .home-sections {
+      gap: 96px;
+      padding-block: 96px;
+    }
+  }
+  h2 {
+    margin: 0;
+    font-size: 34px;
+    line-height: 41px;
+    font-weight: 700;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 28px;
+  }
+  .stat-value {
+    font-size: 44px;
+    line-height: 52px;
+    font-weight: 700;
+    color: var(--color-brand-violet);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-label {
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--color-label-2);
+  }
+
+  .section-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .more-link {
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .split {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px 32px;
+  }
+  .split-aside {
+    flex: 1 1 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .split-aside p {
+    margin: 0;
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--color-label-2);
+  }
+  .split-main {
+    flex: 999 1 560px;
+    min-width: 0;
+  }
+
+  /* 목록(디자인 시스템 List + ListRow) */
+  .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: hidden;
+  }
+  .list li + li {
+    box-shadow: inset 0 0.5px 0 var(--color-separator);
+  }
+  .list-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 60px;
+    padding: 12px 20px;
+    color: var(--color-label);
+    text-decoration: none;
+    transition: background-color 0.15s;
+  }
+  .list-row:hover {
+    background: var(--color-fill-4);
+    text-decoration: none;
+  }
+  .list-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .list-title {
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 600;
+  }
+  .list-sub {
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--color-label-2);
+  }
+  .list-detail {
+    font-size: 17px;
+    color: var(--color-label-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .list-chevron {
+    font-size: 22px;
+    color: var(--color-label-2);
+  }
+
+  .faq {
+    overflow: hidden;
+  }
+  .faq details {
+    padding: 0 20px;
+  }
+  .faq details + details {
+    box-shadow: inset 0 1px 0 var(--color-separator);
+  }
+  .faq summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 60px;
+    padding-block: 12px;
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 600;
+  }
+  .faq summary:focus-visible {
+    outline-offset: -2px;
+  }
+  .faq-chev {
+    font-size: 22px;
+    color: var(--color-label-2);
+    transition: transform 0.15s;
+  }
+  .faq details[open] .faq-chev {
+    transform: rotate(90deg);
+  }
+  .faq details p {
+    margin: 0;
+    padding: 0 0 20px;
+    font-size: 17px;
+    line-height: 26px;
+    color: var(--color-label-2);
+    white-space: pre-line;
+  }
+
+  .apply {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    padding: 40px 28px;
+    border-radius: 34px;
+    background: var(--color-brand-night);
+    color: #fff;
+  }
+  @media (min-width: 768px) {
+    .apply {
+      padding: 48px;
+    }
+  }
+  .apply :global(.apply-mark) {
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    opacity: 0.25;
+  }
+  .apply-text {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 620px;
+  }
+  .apply-eyebrow {
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--color-brand-lavender);
+  }
+  .apply h2 {
+    font-size: clamp(30px, 4vw, 40px);
+    line-height: 1.2;
+  }
+  .apply p {
+    margin: 0;
+    font-size: 17px;
+    line-height: 26px;
+    color: #ffffffcc;
+  }
+  .apply-cta {
+    position: relative;
+  }
+</style>

@@ -1,0 +1,46 @@
+---
+// R2 사진 + 자리표시. 상자는 aspect-ratio로 크기를 먼저 잡아 두므로, 사진이 늦게 오거나 실패해도 레이아웃이 흔들리지 않는다.
+import type { ImageRef } from '../lib/data';
+import { imageSources } from '../lib/image';
+
+interface Props {
+  image: ImageRef | null;
+  alt: string;
+  /** CSS aspect-ratio. 생략하면 사진 원본 비율, 사진이 없으면 1 */
+  ratio?: string;
+  sizes: string;
+  eager?: boolean;
+  fit?: 'cover' | 'contain';
+  class?: string;
+}
+
+const { image, alt, ratio, sizes, eager = false, fit = 'cover', class: className } = Astro.props;
+const src = imageSources(image);
+const aspect = ratio ?? (image ? `${image.width} / ${image.height}` : '1');
+---
+
+<div class:list={["media", className]} style={`aspect-ratio: ${aspect}`} data-fit={fit}>
+  {
+    src && (
+      <img
+        src={src.src}
+        srcset={src.srcset}
+        sizes={sizes}
+        width={src.width}
+        height={src.height}
+        alt={alt}
+        loading={eager ? "eager" : "lazy"}
+        fetchpriority={eager ? "high" : undefined}
+        decoding="async"
+        onerror="this.parentElement.dataset.failed=''"
+      />
+    )
+  }
+  <div class="media-fallback" role={alt ? "img" : undefined} aria-label={alt || undefined} aria-hidden={alt ? undefined : "true"}>
+    <slot>
+      <svg width="28" height="28" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14.5 3.6A7 7 0 1 0 16.4 12a5 5 0 0 1-1.9-8.4z"></path>
+      </svg>
+    </slot>
+  </div>
+</div>

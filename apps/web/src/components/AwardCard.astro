@@ -1,0 +1,177 @@
+---
+import { formatDate, formatWon, isTopPrize, memberAnchor } from '../lib/content';
+import type { Award, Member, Project } from '../lib/data';
+import Picture from './Picture.astro';
+
+interface Props {
+  award: Award;
+  linkMember: (name: string) => Member | undefined;
+  relatedProjects: Project[];
+}
+const { award, linkMember, relatedProjects } = Astro.props;
+const top = isTopPrize(award.prize);
+const dateText = formatDate(award.date);
+---
+
+<article class="award card">
+  <Picture image={award.image} alt={`${award.name} 수상 사진`} ratio="4 / 3" sizes="(min-width: 768px) 240px, calc(100vw - 72px)" class="award-photo" />
+  <div class="award-body">
+    <div class="award-top">
+      {award.prize && <span class:list={["badge", top && "badge-top"]}>{award.prize}</span>}
+      {dateText && <time datetime={award.date}>{dateText}</time>}
+    </div>
+    <h3>{award.name}</h3>
+    <dl>
+      {
+        award.team && (
+          <div>
+            <dt>팀</dt>
+            <dd>{award.team}</dd>
+          </div>
+        )
+      }
+      {
+        award.prizeMoney != null && award.prizeMoney > 0 && (
+          <div>
+            <dt>상금</dt>
+            <dd>{formatWon(award.prizeMoney)}</dd>
+          </div>
+        )
+      }
+      {
+        relatedProjects.length > 0 && (
+          <div>
+            <dt>프로젝트</dt>
+            <dd>
+              {relatedProjects.map((p, i) => (
+                <>
+                  {i > 0 && ", "}
+                  <a href={`/projects?year=${encodeURIComponent(p.year)}`}>{p.name}</a>
+                </>
+              ))}
+            </dd>
+          </div>
+        )
+      }
+      {
+        award.memberNames.length > 0 && (
+          <div class="award-members">
+            <dt>멤버</dt>
+            <dd>
+              <ul>
+                {award.memberNames.map((name) => {
+                  const member = linkMember(name);
+                  return (
+                    <li>
+                      {member ? (
+                        <a class="chip chip-link" href={`/members#${memberAnchor(member)}`}>
+                          {name}
+                        </a>
+                      ) : (
+                        <span class="chip">{name}</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </dd>
+          </div>
+        )
+      }
+    </dl>
+  </div>
+</article>
+
+<style>
+  .award {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 24px;
+    padding: 16px;
+  }
+  .award :global(.award-photo) {
+    flex: 1 1 100%;
+    border-radius: 18px;
+  }
+  @media (min-width: 768px) {
+    .award {
+      padding: 20px;
+    }
+    .award :global(.award-photo) {
+      flex: 0 0 240px;
+    }
+  }
+  .award-body {
+    flex: 1 1 320px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 0;
+  }
+  .award-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--color-label-2);
+  }
+  .badge {
+    padding: 4px 12px;
+    border-radius: 1000px;
+    background: var(--color-lavender-tint);
+    color: var(--color-brand-violet);
+    font-weight: 700;
+  }
+  .badge-top {
+    background: var(--color-brand-violet);
+    color: #fff;
+  }
+  h3 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+  }
+  dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 24px;
+    font-size: 15px;
+    line-height: 20px;
+  }
+  dl > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  dt {
+    color: var(--color-label-2);
+  }
+  dd {
+    margin: 0;
+    font-weight: 600;
+  }
+  .award-members {
+    grid-column: 1 / -1;
+  }
+  .award-members ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .chip-link {
+    color: var(--color-brand-violet);
+    text-decoration: none;
+  }
+  .chip-link:hover {
+    background: var(--color-lavender-tint);
+    text-decoration: none;
+  }
+</style>

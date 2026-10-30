@@ -1,0 +1,102 @@
+// 사이트 전역 설정. Notion에서 관리하지 않는 값만 여기에 둔다.
+
+export interface IntroSceneVariant {
+  /** 이미지 원본 가로세로비(가로/세로) */
+  aspect: number;
+  /** 달 중심(이미지 폭·높이에 대한 %) */
+  moonX: number;
+  moonY: number;
+  /** 달 지름(이미지 폭에 대한 %) */
+  moonDiameter: number;
+  /** 하늘 레이어 최대 확대 배율. 이 배율에서 멈춘 뒤 달이 로고로 바뀐다. */
+  zoom: number;
+  sky: string;
+  city: string;
+  /** 달 부분만 잘라 Real-ESRGAN으로 키운 고해상도 사진. 하늘 레이어의 달 위에 겹친다. */
+  moonDetail: string;
+  /** moonDetail 한 변의 길이(이미지 폭에 대한 %) */
+  moonDetailSize: number;
+  width: number;
+  height: number;
+}
+
+export const site = {
+  name: 'LUNA',
+  title: '루나 LUNA — IT 소셜벤처 동아리',
+  description:
+    '세상을 비추는 달, LUNA. 기술로 사회 문제를 푸는 IT 소셜벤처 동아리 루나의 멤버, 프로젝트, 수상 기록을 소개합니다.',
+  /** TODO: 창립 연도 확인(요청서 기준 2018). 비우면(null) "Since …" 문구를 숨긴다. */
+  foundedYear: 2018 as number | null,
+
+  /** 모집 섹션. generation·applyUrl 중 하나라도 비어 있으면 모집 섹션과 "지원하기" 버튼을 숨긴다. */
+  recruit: {
+    generation: '', // TODO: 예) "9기"
+    period: '', // TODO: 예) "3월 2일 ~ 3월 15일"
+    target: '', // TODO: 지원 대상
+    applyUrl: '', // TODO: 지원서 링크(https://…)
+  },
+
+  /** 푸터 연락처·SNS. 비어 있는 항목은 표시하지 않는다. */
+  contact: {
+    email: '', // TODO
+    instagram: '', // TODO: https://instagram.com/…
+    github: '', // TODO
+  },
+
+  /** 인트로 사진 출처 표기. 라이선스상 필요하면 채운다(푸터에 표시). */
+  photoCredit: '', // TODO: 라이선스 확인
+
+  introScene: {
+    /**
+     * 실제 밤 도시 사진을 쓸지. 에셋(public/intro/*.webp)을 넣고 라이선스를 확인한 뒤 true로 바꾼다.
+     * false면 같은 좌표에 CSS로 그린 임시 하늘·달을 쓴다.
+     * TODO: 라이선스 확인
+     */
+    usePhotos: false,
+    desktop: {
+      aspect: 2400 / 1350,
+      moonX: 49.38,
+      moonY: 22.64,
+      moonDiameter: 14.5,
+      zoom: 2.4,
+      sky: '/intro/intro-desk-sky.webp',
+      city: '/intro/intro-desk-city.webp',
+      moonDetail: '/intro/intro-desk-moon.webp',
+      moonDetailSize: (400 / 2400) * 100,
+      width: 2400,
+      height: 1350,
+    },
+    mobile: {
+      aspect: 900 / 1947,
+      moonX: 50.05,
+      moonY: 31.93,
+      moonDiameter: 39.2,
+      zoom: 1.7,
+      sky: '/intro/intro-mob-sky.webp',
+      city: '/intro/intro-mob-city.webp',
+      moonDetail: '/intro/intro-mob-moon.webp',
+      moonDetailSize: (400 / 900) * 100,
+      width: 900,
+      height: 1947,
+    },
+    /** 모바일 에셋으로 바꾸는 기준 */
+    mobileMedia: '(max-aspect-ratio: 3/4)',
+  } satisfies {
+    usePhotos: boolean;
+    desktop: IntroSceneVariant;
+    mobile: IntroSceneVariant;
+    mobileMedia: string;
+  },
+} as const;
+
+export const isRecruiting = Boolean(site.recruit.generation && site.recruit.applyUrl);
+
+export const nav = [
+  { key: 'home', label: '홈', href: '/' },
+  { key: 'members', label: '멤버', href: '/members' },
+  { key: 'projects', label: '프로젝트', href: '/projects' },
+  { key: 'awards', label: '수상', href: '/awards' },
+  { key: 'faq', label: 'FAQ', href: '/#faq' },
+] as const;
+
+export type NavKey = (typeof nav)[number]['key'];

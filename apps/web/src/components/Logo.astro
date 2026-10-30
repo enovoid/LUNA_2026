@@ -1,0 +1,21 @@
+---
+// 루나 로고(luna.svg). label이 있으면 의미 있는 이미지, 없으면 장식으로 숨긴다.
+import LunaSvg from '../assets/luna.svg';
+
+interface Props {
+  size?: number | string;
+  label?: string;
+  class?: string;
+}
+const { size = 30, label, class: className } = Astro.props;
+---
+
+<LunaSvg
+  width={size}
+  height={size}
+  class:list={["block shrink-0", className]}
+  role={label ? "img" : undefined}
+  aria-label={label}
+  aria-hidden={label ? undefined : "true"}
+  focusable="false"
+/>
