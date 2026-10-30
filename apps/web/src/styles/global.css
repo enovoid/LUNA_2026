@@ -433,3 +433,15 @@ html.js .is-revealed [data-reveal-item] {
   animation-duration: var(--spring-smooth-dur);
   animation-timing-function: var(--spring-smooth);
 }
+/* 탭 바·위쪽 탭은 이동하는 동안 스냅숏 두 장(이전·다음)을 겹쳐 0.67초에 걸쳐 바꾸면 알약 전체가 위에 다시 그려지며
+   깜빡이는 것처럼 보인다. 이전 장은 감추고 다음 장을 그 자리에 바로 둔다: 막대는 가만히 있고 선택만 즉시 옮겨진다(iOS 탭 바처럼). */
+::view-transition-group(tab-bar),
+::view-transition-group(site-tabs),
+::view-transition-new(tab-bar),
+::view-transition-new(site-tabs) {
+  animation: none;
+}
+::view-transition-old(tab-bar),
+::view-transition-old(site-tabs) {
+  display: none;
+}
