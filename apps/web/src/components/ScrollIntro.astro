@@ -104,7 +104,6 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     <!-- 달 둘레만 남기고 어두워지는 막 → 어두운 배경 → (로고) → 바탕색 막 → 구름 → 아래 22% 어둠 -->
     <div class="intro-ring" data-layer="ring" aria-hidden="true"></div>
     <div class="intro-dark" data-layer="dark" aria-hidden="true"></div>
-    <div class="intro-curtain" data-layer="curtain" aria-hidden="true"></div>
     <img class="intro-cloud intro-cloud-top" data-layer="cloudTop" src={clouds.top.src} width={clouds.top.width} height={clouds.top.height} alt="" aria-hidden="true" loading="lazy" decoding="async" draggable="false" />
     <img class="intro-cloud intro-cloud-bottom" data-layer="cloudBottom" src={clouds.bottom.src} width={clouds.bottom.width} height={clouds.bottom.height} alt="" aria-hidden="true" loading="lazy" decoding="async" draggable="false" />
     <div class="intro-fade" data-layer="fade" aria-hidden="true"></div>
@@ -151,9 +150,10 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     --moon: var(--d-moon);
     --detail: var(--d-detail);
     position: relative;
-    /* 스크롤 길이: 화면 높이 × travel. 달→로고 구간은 PR #7에서 맞춘 길이(2.8) 그대로, 뒤에 구름 구간 1.0을 더했다.
+    /* 스크롤 길이: 화면 높이 × travel. 달→로고 구간은 PR #7에서 맞춘 길이 그대로, 뒤에 구름 구간을 붙였다.
+       구름이 로고를 덮는 순간 고정이 풀린다(구름만 남은 채 멈춰 있는 구간 없음).
        기준값은 apps/web/README.md "스크롤 속도" */
-    --travel: 3.8;
+    --travel: 3.35;
     height: calc(100vh * (var(--travel) + 1));
     height: calc(100svh * (var(--travel) + 1));
     background: var(--bg);
@@ -165,7 +165,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
       --my: var(--m-my);
       --moon: var(--m-moon);
       --detail: var(--m-detail);
-      --travel: 3.3;
+      --travel: 2.9;
     }
   }
 
@@ -260,8 +260,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
 
   /* 화면 전체를 덮는 막들. opacity만 바뀐다. */
   .intro-ring,
-  .intro-dark,
-  .intro-curtain {
+  .intro-dark {
     position: absolute;
     inset: 0;
     opacity: 0;
@@ -278,17 +277,10 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole, 120px) * 0.92), #000 calc(var(--hole, 120px) * 1.6));
     mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole, 120px) * 0.92), #000 calc(var(--hole, 120px) * 1.6));
   }
-  /* 구름 틈새를 채워 가운데 밝은 회색을 바탕색으로 수렴시킨다(이음새 방지) */
-  .intro-curtain {
-    background: var(--bg);
-  }
-  /* 쌓는 순서: 로고·제목(1) 위로 바탕색 막(2)·구름(3)·아래 어둠(4)이 덮는다 → 구름이 닫히며 로고를 가린다
+  /* 쌓는 순서: 로고·제목(1) 위로 구름(3)·아래 어둠(4)이 덮는다 → 구름이 닫히며 로고를 가린다
      (사용자 요청 2026-10-30 "구름 뒤로 로고가 숨었으면"). 안내 문구(5)는 맨 위. */
   .intro-content {
     z-index: 1;
-  }
-  .intro-curtain {
-    z-index: 2;
   }
   .intro-cloud {
     z-index: 3;
