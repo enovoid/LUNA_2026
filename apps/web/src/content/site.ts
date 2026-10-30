@@ -70,12 +70,15 @@ export const site = {
       top: { src: '/intro/intro-cloud-top.webp', width: 1717, height: 860 },
       bottom: { src: '/intro/intro-cloud-bottom.webp', width: 1717, height: 956 },
     },
+    /** 첫 화면 로고를 두께 있는 3D(천천히 기울어짐)로 보여 줄지. false면 원래 2D 로고. */
+    logo3d: true,
   } satisfies {
     usePhotos: boolean;
     desktop: IntroSceneVariant;
     mobile: IntroSceneVariant;
     mobileMedia: string;
     clouds: Record<'top' | 'bottom', { src: string; width: number; height: number }>;
+    logo3d: boolean;
   },
 } as const;
 
