@@ -1,0 +1,46 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  # Railway sync 작업이 Notion 변경을 반영한 뒤 호출 (event_type: content-updated)
+  repository_dispatch:
+    types: [content-updated]
+  # 주 1회 예약 빌드 (월요일 03:00 KST = 일요일 18:00 UTC)
+  schedule:
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+# 같은 시점에 배포가 겹치지 않게 한다. 진행 중인 배포는 끝까지 두고 최신 요청 하나만 대기.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Build (Postgres에서 읽어 정적 사이트 생성)
+        run: pnpm build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/web
+          command: deploy

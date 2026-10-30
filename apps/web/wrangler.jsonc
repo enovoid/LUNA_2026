@@ -1,0 +1,7 @@
+{
+  // Cloudflare Workers Static Assets로 dist를 배포한다.
+  // TODO: Cloudflare 문서에서 현재 권장 방식(Workers Static Assets vs Pages)을 확인하고 name·도메인을 확정
+  "name": "luna-2026",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./dist" }
+}
