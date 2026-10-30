@@ -1,0 +1,151 @@
+---
+// 페이지 이동을 빠르게 하는 장치를 한곳에 모았다. Base 레이아웃의 <head>에 둔다.
+// 1. Speculation Rules: 링크에 마우스를 올리거나(데스크톱 약 200ms) 누르기 시작하면(모바일) 다음 페이지를 미리 그려 둔다.
+//    주 메뉴 페이지는 쉬는 시간에 HTML만 미리 받아 둔다. 지원하지 않는 브라우저는 그냥 무시한다(JS 0바이트).
+// 2. 서비스 워커(public/sw.js): 한 번 본 페이지·자산을 Cache Storage에 두고 다음부터 바로 꺼낸다.
+// 3. scripts/nav-pending.ts: 그래도 이동이 늦으면 탭 선택을 먼저 옮기고 도착할 페이지 모양의 스켈레톤을 보인다.
+const rules = {
+  prerender: [
+    {
+      where: {
+        and: [
+          { href_matches: '/*' },
+          { not: { href_matches: ['/og.png', '/sitemap.xml', '/robots.txt'] } },
+          { not: { selector_matches: '[target], [download], [rel~=nofollow]' } },
+        ],
+      },
+      eagerness: 'moderate',
+    },
+  ],
+  prefetch: [{ where: { selector_matches: '.top-tabs a, .tab-bar a' }, eagerness: 'eager' }],
+};
+const registerSw = import.meta.env.PROD;
+---
+
+<script type="speculationrules" is:inline set:html={JSON.stringify(rules)} />
+{
+  registerSw && (
+    <script is:inline>
+      if ("serviceWorker" in navigator)
+        addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+    </script>
+  )
+}
+<script>
+  import "../scripts/nav-pending";
+</script>
+
+<style is:global>
+  /* 스켈레톤: 같은 자리·같은 크기의 회색 상자. 빛이 천천히 지나간다(동작 줄이기면 멈춘 상자). */
+  .sk {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    max-width: 100%;
+    border-radius: 12px;
+    background: var(--color-fill-3);
+  }
+  .sk::after,
+  html.js .media.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 20%, #ffffff0f 50%, transparent 80%);
+    transform: translate3d(-100%, 0, 0);
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .sk::after,
+    html.js .media.is-loading::after {
+      animation: sk-sweep 1.6s ease-in-out infinite;
+    }
+  }
+  @keyframes sk-sweep {
+    to {
+      transform: translate3d(100%, 0, 0);
+    }
+  }
+
+  .nav-skeleton {
+    position: fixed;
+    inset: 0;
+    z-index: 25; /* 헤더(30)·탭 바(40) 아래 */
+    overflow: hidden;
+    padding-top: 68px; /* 헤더 높이 */
+    background: var(--color-bg);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-skeleton {
+      animation: sk-in var(--fade-dur, 0.2s) ease both;
+    }
+  }
+  @keyframes sk-in {
+    from {
+      opacity: 0;
+    }
+  }
+  .nav-skeleton-home {
+    padding-top: 0;
+  }
+  .sk-hero {
+    display: grid;
+    place-items: center;
+    height: 100svh;
+  }
+  .sk-moon {
+    width: min(36vw, 220px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+  }
+  .sk-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding-top: 24px;
+  }
+  .sk-head-text,
+  .sk-card,
+  .sk-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sk-head-text {
+    flex: 1 1 240px;
+  }
+  .sk-card {
+    gap: 12px;
+  }
+  .sk-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 32px;
+  }
+  .sk-grid {
+    display: grid;
+    gap: 16px;
+  }
+  .sk-grid-members {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  @media (min-width: 768px) {
+    .sk-grid-members {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+  }
+  .sk-grid-projects {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  }
+  .sk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .sk-row {
+    border-radius: 16px;
+  }
+</style>

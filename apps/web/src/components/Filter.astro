@@ -1,7 +1,7 @@
 ---
-// 필터 컨트롤 + 첫 페인트 전 URL 쿼리 적용.
-// 인라인 스크립트가 카드 목록보다 뒤에서 먼저 숨길 카드를 숨겨, 섬이 깨어날 때 레이아웃이 흔들리지 않게 한다.
-import FilterControl from './FilterControl';
+// 필터 컨트롤(세그먼트). 마크업은 정적으로 그리고, 동작은 scripts/segmented.ts가 붙인다(React 없이 약 1KB).
+// 첫 페인트 전 URL 쿼리 적용은 목록 뒤의 FilterBoot가 맡는다(선택 표시도 같이 맞춘다).
+import { ALL } from '../lib/filter-dom';
 
 interface Props {
   label: string;
@@ -10,9 +10,28 @@ interface Props {
   unit: string;
 }
 const { label, param, options, unit } = Astro.props;
+const all = [ALL, ...options];
 ---
 
-{options.length > 1 && <FilterControl client:load label={label} param={param} options={options} unit={unit} />}
+{
+  options.length > 1 && (
+    <div class="segmented-wrap" data-segmented data-param={param} data-unit={unit}>
+      <div role="radiogroup" aria-label={label} class="segmented">
+        <span class="segment-thumb" aria-hidden="true" />
+        {all.map((option, i) => (
+          <button type="button" role="radio" class="segment" value={option} aria-checked={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1}>
+            {option}
+          </button>
+        ))}
+      </div>
+      <p class="sr-only" aria-live="polite" />
+    </div>
+  )
+}
+
+<script>
+  import "../scripts/segmented";
+</script>
 
 <style is:global>
   .segmented-wrap {

@@ -1,5 +1,5 @@
 ---
-// 필터 목록 맨 뒤에 둔다. 섬(React)이 깨어나기 전, 첫 페인트 전에 URL 쿼리대로 카드를 숨긴다.
+// 필터 목록 맨 뒤에 둔다. 첫 페인트 전에 URL 쿼리대로 카드를 숨기고 세그먼트 선택 표시도 맞춘다.
 // 규칙은 lib/filter-dom.ts의 applyFilter와 같다.
 interface Props {
   param: string;
@@ -17,5 +17,9 @@ const { param } = Astro.props;
     for (const i of items) i.hidden = i.dataset[param] !== value;
     for (const g of scope.querySelectorAll("[data-filter-group]"))
       g.hidden = !g.querySelector("[data-filter-item]:not([hidden])");
+    for (const b of document.querySelectorAll(`[data-param="${param}"] [role="radio"]`)) {
+      b.setAttribute("aria-checked", String(b.value === value));
+      b.tabIndex = b.value === value ? 0 : -1;
+    }
   })();
 </script>

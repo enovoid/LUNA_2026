@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import NavPerf from '../components/NavPerf.astro';
 import TabBar from '../components/TabBar.astro';
 import { type NavKey, site } from '../content/site';
 import { loadSiteData } from '../lib/data';
@@ -52,6 +53,7 @@ const { source } = await loadSiteData();
     <meta name="twitter:card" content="summary_large_image" />
     <!-- JS가 켜져 있을 때만 등장 효과·인트로 애니메이션 초기 상태를 쓴다(첫 페인트 전에 실행). -->
     <script is:inline>document.documentElement.classList.add("js");</script>
+    <NavPerf />
     <slot name="head" />
   </head>
   <body>

@@ -1,4 +1,3 @@
-import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, envField } from 'astro/config';
 
@@ -10,7 +9,6 @@ export default defineConfig({
   output: 'static',
   trailingSlash: 'never',
   build: { format: 'file', inlineStylesheets: 'auto' },
-  integrations: [react()],
   vite: { plugins: [tailwindcss()] },
   // 빌드 때 읽는 환경 변수. 타입이 생기고 값이 형식에 안 맞으면 빌드가 시작 전에 멈춘다(astro:env).
   // SITE_URL은 설정 파일 안에서 쓰여 astro:env로 읽을 수 없으므로 위에서 process.env로 읽는다.
