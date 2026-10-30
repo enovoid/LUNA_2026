@@ -1,15 +1,17 @@
 ---
 import { site } from '../content/site';
+import { loadSiteData } from '../lib/data';
 import Logo from './Logo.astro';
 
 interface Props {
   dataSource: 'db' | 'mock';
 }
 const { dataSource } = Astro.props;
+const { contact } = (await loadSiteData()).settings;
 const links: { label: string; href: string }[] = [];
-if (site.contact.email) links.push({ label: '이메일', href: `mailto:${site.contact.email}` });
-if (site.contact.instagram) links.push({ label: 'Instagram', href: site.contact.instagram });
-if (site.contact.github) links.push({ label: 'GitHub', href: site.contact.github });
+if (contact.email) links.push({ label: '이메일', href: `mailto:${contact.email}` });
+if (contact.instagram) links.push({ label: 'Instagram', href: contact.instagram });
+if (contact.github) links.push({ label: 'GitHub', href: contact.github });
 ---
 
 <footer class="site-footer">

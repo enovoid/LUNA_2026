@@ -1,5 +1,5 @@
 import { awards, createDb, type Db, faqs, members, projects, syncState } from '@luna/db';
-import { eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm';
 import type { DatabaseName } from './config.js';
 import type { ProcessedImage } from './images.js';
 import type { FieldsByDatabase, MappedPage } from './mappers.js';
@@ -121,6 +121,42 @@ export class PostgresStore implements ContentStore {
       .insert(syncState)
       .values(values)
       .onConflictDoUpdate({ target: syncState.database, set: update });
+  }
+
+  /**
+   * Railway Cron과 관리자 페이지의 수동 실행(GitHub Actions)이 겹치지 않게 `_running` 행으로 잠근다.
+   * 잡았으면 잠근 시각을, 다른 실행이 잡고 있으면 undefined를 돌려준다.
+   * 프로세스가 죽어 풀지 못한 잠금은 ttlMs가 지나면 다음 실행이 가져간다.
+   */
+  async acquireRunLock(trigger: string, ttlMs: number): Promise<Date | undefined> {
+    const now = new Date();
+    const values = {
+      database: '_running',
+      lastRunAt: now,
+      lastResult: { trigger, startedAt: now.toISOString() },
+      lastError: null,
+    };
+    const { database: _key, ...update } = values;
+    const rows = await this.#db
+      .insert(syncState)
+      .values(values)
+      .onConflictDoUpdate({
+        target: syncState.database,
+        set: update,
+        setWhere: or(
+          isNull(syncState.lastRunAt),
+          lt(syncState.lastRunAt, new Date(now.getTime() - ttlMs)),
+        ),
+      })
+      .returning({ database: syncState.database });
+    return rows.length > 0 ? now : undefined;
+  }
+
+  /** 자기가 잡은 잠금만 푼다(ttl이 지나 다른 실행이 가져간 잠금은 건드리지 않는다). */
+  async releaseRunLock(lockedAt: Date): Promise<void> {
+    await this.#db
+      .delete(syncState)
+      .where(and(eq(syncState.database, '_running'), eq(syncState.lastRunAt, lockedAt)));
   }
 
   async close(): Promise<void> {

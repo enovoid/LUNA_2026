@@ -3,6 +3,7 @@ import postgres from 'postgres';
 import * as schema from './schema.js';
 
 export * from './schema.js';
+export * from './settings.js';
 export { schema };
 
 /** Postgres 연결과 Drizzle 인스턴스를 만든다. 끝나면 `db.$client.end()`로 연결을 닫는다. */

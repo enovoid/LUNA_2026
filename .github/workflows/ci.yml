@@ -57,3 +57,7 @@ jobs:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       - name: Build
         run: pnpm build
+      - name: 관리자 Worker 번들 확인
+        run: pnpm --filter @luna/admin exec wrangler deploy --dry-run --outdir dist
+        env:
+          WRANGLER_SEND_METRICS: "false"

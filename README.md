@@ -7,15 +7,19 @@ Notion ─(15분마다 변경분만)→ Railway Cron(sync) ─→ Railway Postgr
                                    └─→ 이미지 WebP 변환 → Cloudflare R2
                                    └─→ 변경 있으면 repository_dispatch
 GitHub Actions: Astro 빌드(Postgres 읽기) → Cloudflare 정적 배포
+
+운영진 ─ Cloudflare Access ─→ 관리자 Worker(/admin) ─→ Postgres(동기화 상태, 모집·연락처 설정)
+                                                     └→ GitHub Actions(수동 동기화, 다시 배포)
 ```
 
-방문자 요청은 Notion에도 DB에도 닿지 않는다.
+방문자 요청은 Notion에도 DB에도 닿지 않는다. 모집 정보·연락처처럼 Notion에 없는 값은 관리자 페이지에서 고치고, 저장하면 사이트가 다시 빌드된다.
 
 ## 구성
 
 | 경로            | 역할                                       |
 | --------------- | ------------------------------------------ |
 | `apps/web`      | Astro 정적 사이트 (`@luna/web`)            |
+| `apps/admin`    | 운영진 관리자 Worker (`@luna/admin`)       |
 | `packages/db`   | Drizzle 스키마·마이그레이션 (`@luna/db`)   |
 | `packages/sync` | Notion → Postgres/R2 동기화 (`@luna/sync`) |
 
@@ -63,12 +67,15 @@ lint·format은 ESLint/Prettier 대신 Biome 하나로 쓴다. 한 가지 한계
 
 ## CI / 배포 (GitHub Actions)
 
-| 워크플로     | 언제                                                                                 | 하는 일                                                                      |
-| ------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| `ci.yml`     | PR, main 외 브랜치 푸시                                                              | Biome, typecheck, 임시 Postgres에 마이그레이션 적용 + 스키마 일치 확인, 빌드 |
-| `deploy.yml` | main 푸시, `repository_dispatch`(`content-updated`), 주 1회 예약(일 18:00 UTC), 수동 | 검사 → 빌드(Postgres 읽기) → Cloudflare 배포                                 |
+| 워크플로           | 언제                                                                                 | 하는 일                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `ci.yml`           | PR, main 외 브랜치 푸시                                                              | Biome, typecheck, 임시 Postgres에 마이그레이션 적용 + 스키마 일치 확인, 빌드 |
+| `deploy.yml`       | main 푸시, `repository_dispatch`(`content-updated`), 주 1회 예약(일 18:00 UTC), 수동 | 검사 → DB 마이그레이션 → 빌드(Postgres 읽기) → Cloudflare 배포               |
+| `sync.yml`         | 관리자 페이지의 "지금 다시 동기화", 수동                                             | Notion → Postgres/R2 동기화(Railway Cron과 같은 코드, 겹치면 건너뜀)         |
+| `deploy-admin.yml` | main 푸시 중 `apps/admin`·`packages/db` 변경, 수동                                   | 관리자 Worker 배포                                                           |
 
-GitHub 저장소 **Settings → Secrets and variables → Actions**에 등록: `DATABASE_URL`, `R2_PUBLIC_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+GitHub 저장소 **Settings → Secrets and variables → Actions**에 등록: `DATABASE_URL`, `R2_PUBLIC_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. 수동 동기화(`sync.yml`)를 쓰려면 Notion·R2 값도 필요하다([`apps/admin/README.md`](apps/admin/README.md)).
+배포 때 `pnpm db:migrate`가 먼저 돌아 새 마이그레이션이 자동으로 적용된다.
 `DATABASE_URL`은 Railway Postgres의 **공개(TCP proxy) 주소**여야 GitHub 러너에서 접속된다.
 
 ## 설정 체크리스트 (직접 해야 하는 클릭 작업)
@@ -102,7 +109,12 @@ GitHub 저장소 **Settings → Secrets and variables → Actions**에 등록: `
 - [ ] fine-grained token(이 저장소만, **Contents: Read and write** 권한 — `repository_dispatch`에 필요) → Railway `GITHUB_DISPATCH_TOKEN`
 - [ ] Actions Secrets 등록(위 목록)
 
+### 관리자 페이지
+
+- [ ] [`apps/admin/README.md`](apps/admin/README.md)의 "설정 체크리스트": GitHub Secrets 추가, 관리자용 토큰, Zero Trust(Access) 켜기, 운영진 이메일 허용, Worker 변수
+
 ## 남은 TODO
 
-- 사이트 도메인, 창립 연도, 모집 정보, 연락처·SNS, 인트로 사진 라이선스 확인
+- 사이트 도메인, 창립 연도, 인트로 사진 라이선스 확인
+- 모집 정보, 연락처·SNS는 관리자 페이지에서 입력
 - 다크 모드, Lighthouse 측정

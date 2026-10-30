@@ -16,6 +16,8 @@ pnpm --filter @luna/sync test
 
 Railway에서는 Start 명령을 `pnpm --filter @luna/sync start`로 둔다(환경 변수는 Railway Variables에서 받음).
 
+관리자 페이지의 "지금 다시 동기화"는 같은 명령을 GitHub Actions(`.github/workflows/sync.yml`, `SYNC_TRIGGER=admin`)에서 돌린다. 실행은 시작할 때 `sync_state._running`을 잡고, 다른 실행이 잡고 있으면 아무것도 하지 않고 종료 코드 0으로 끝난다(`--dry-run`은 잠그지 않음).
+
 ## 한 번의 실행 순서
 
 1. **스키마 확인.** 4개 DB의 속성 이름(대소문자 포함)과 타입을 요청서 표와 비교한다. 하나라도 다르면 아무것도 쓰지 않고 차이를 출력한 뒤 종료 코드 2로 끝난다. 표에 없는 속성은 참고로만 출력한다.
@@ -96,5 +98,6 @@ Node 내장 `fetch`(undici 기반)를 쓴다.
 | `_image_cache`                       | Notion 파일 주소 → `image_key`·크기. 지금 쓰이는 이미지만 남긴다                                  |
 | `_r2_orphans`                        | 쓰이지 않게 된 `image_key`와 처음 발견한 시각                                                     |
 | `_dispatch`                          | `{ "pending": true }`면 빌드 호출이 실패해 다음 실행에서 다시 부른다                              |
+| `_running`                           | 지금 실행 중인 동기화(`trigger`: `cron`·`admin`, 시작 시각). 겹침 방지 잠금, 30분 지나면 무효     |
 
 사이트 빌드는 `sync_state`를 읽을 필요가 없다.

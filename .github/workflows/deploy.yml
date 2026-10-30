@@ -32,6 +32,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      # 새 테이블·열이 있으면 빌드 전에 적용한다. 이미 적용된 마이그레이션은 건너뛴다.
+      - name: DB 마이그레이션
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Build (Postgres에서 읽어 정적 사이트 생성)
         run: pnpm build
         env:
