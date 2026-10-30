@@ -1,5 +1,6 @@
 ---
 import EmptyState from '../components/EmptyState.astro';
+import FaqList from '../components/FaqList.astro';
 import Logo from '../components/Logo.astro';
 import ProjectCard from '../components/ProjectCard.astro';
 import ScrollIntro from '../components/ScrollIntro.astro';
@@ -19,6 +20,8 @@ import { loadSiteData } from '../lib/data';
 const { members, awards, projects, faqs } = await loadSiteData();
 const stats = computeStats(members, awards);
 const sortedFaqs = sortFaqs(faqs);
+// 홈에는 앞의 질문 몇 개만 보이고 나머지는 FAQ 페이지에서 본다.
+const homeFaqs = sortedFaqs.slice(0, 3);
 const intro = sortedFaqs[0]?.answer ?? '';
 const latestProjects = sortProjects(projects).slice(0, 6);
 const latestAwards = sortAwards(awards).slice(0, 3);
@@ -68,7 +71,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
       }
       <div class="about-actions" data-reveal>
         <a href="/projects" class="btn btn-primary">프로젝트 둘러보기</a>
-        <a href={isRecruiting ? "#apply" : "#faq"} class="btn btn-ghost">지원 안내</a>
+        <a href={isRecruiting ? "#apply" : "/faq"} class="btn btn-ghost">지원 안내</a>
       </div>
     </div>
   </section>
@@ -103,7 +106,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
       </div>
       {
         latestProjects.length > 0 ? (
-          <div class="gallery" data-gallery data-reveal>
+          <div class="gallery container-page" data-gallery data-reveal>
             <ul class="gallery-track" data-gallery-track aria-label="최근 프로젝트">
               {latestProjects.map((p, i) => (
                 <li class="gallery-item" data-reveal-item style={`--i:${i}`}>
@@ -111,7 +114,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
                 </li>
               ))}
             </ul>
-            <div class="container-page gallery-nav" data-gallery-nav>
+            <div class="gallery-nav" data-gallery-nav>
               <button type="button" class="paddle pressable" data-gallery-prev aria-label="이전 프로젝트">
                 <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>
               </button>
@@ -167,21 +170,12 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-title">자주 묻는 질문</h2>
           <p>지원 전에 궁금한 점을 모았습니다.</p>
+          {sortedFaqs.length > 0 && <a href="/faq" class="more-link">모든 질문 보기</a>}
         </div>
         <div class="split-main">
           {
-            sortedFaqs.length > 0 ? (
-              <div class="faq card">
-                {sortedFaqs.map((f, i) => (
-                  <details open={i === 0}>
-                    <summary>
-                      <span>{f.question}</span>
-                      <span class="faq-chev" aria-hidden="true">›</span>
-                    </summary>
-                    <p>{f.answer}</p>
-                  </details>
-                ))}
-              </div>
+            homeFaqs.length > 0 ? (
+              <FaqList faqs={homeFaqs} openFirst={1} idPrefix="home-faq" />
             ) : (
               <EmptyState title="준비 중인 질문이 없어요" message={site.contact.email ? `궁금한 점은 ${site.contact.email}로 물어봐 주세요.` : undefined} />
             )
@@ -349,24 +343,23 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     color: var(--color-label-2);
   }
 
-  /* 프로젝트 갤러리: 가로로 넘기는 카드 줄(스크롤 스냅). 첫 카드는 본문 왼쪽 선에 맞추고 오른쪽은 화면 끝까지 흐른다. */
+  /* 프로젝트 갤러리(Apple 카드 선반 방식).
+     넓은 화면: 본문 칸 안에 카드 3장이 꼭 맞게 들어가고 양쪽 끝이 제목·버튼과 같은 선에 선다. 버튼은 3장씩 넘긴다.
+     좁은 화면: 칸을 화면 끝까지 넓히되 양쪽에 같은 여백을 두어, 처음엔 첫 카드가 왼쪽 선에, 끝까지 넘기면 마지막 카드가
+     오른쪽 선에 맞는다. 다음 카드가 살짝 보여 옆으로 넘길 수 있다는 걸 알려 준다(iOS 가로 목록과 같은 방식). */
   .gallery {
-    --gutter: max(var(--margin), calc((100vw - 1200px) / 2 + 24px));
     display: flex;
     flex-direction: column;
     gap: 20px;
   }
-  @media (max-width: 767px) {
-    .gallery {
-      --gutter: var(--margin);
-    }
-  }
   .gallery-track {
+    --gap: 16px;
+    --gutter: 0px;
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: min(82vw, 360px);
-    gap: 16px;
-    margin: 0;
+    grid-auto-columns: calc((100% - 2 * var(--gap)) / 3);
+    gap: var(--gap);
+    margin: 0 calc(-1 * var(--gutter));
     padding: 4px var(--gutter) 8px;
     list-style: none;
     overflow-x: auto;
@@ -374,6 +367,18 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     scroll-snap-type: x mandatory;
     scroll-padding-inline: var(--gutter);
     scrollbar-width: none;
+  }
+  @media (max-width: 1023px) {
+    .gallery-track {
+      grid-auto-columns: calc((100% - var(--gap)) / 2);
+    }
+  }
+  @media (max-width: 767px) {
+    .gallery-track {
+      --gap: 12px;
+      --gutter: var(--margin);
+      grid-auto-columns: calc(100% - 28px);
+    }
   }
   .gallery-track::-webkit-scrollbar {
     display: none;
@@ -488,60 +493,6 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
   .list-chevron {
     font-size: 22px;
     color: var(--color-label-2);
-  }
-
-  /* FAQ: 펼칠 때 높이가 스프링으로 열린다(지원 브라우저). 화살표는 snappy 스프링으로 돈다. */
-  .faq {
-    overflow: hidden;
-    interpolate-size: allow-keywords;
-  }
-  .faq details {
-    padding: 0 20px;
-  }
-  .faq details + details {
-    box-shadow: inset 0 1px 0 var(--color-separator);
-  }
-  .faq summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 60px;
-    padding-block: 12px;
-    font-size: 17px;
-    line-height: 22px;
-    font-weight: 600;
-  }
-  .faq summary:focus-visible {
-    outline-offset: -2px;
-  }
-  .faq-chev {
-    font-size: 22px;
-    color: var(--color-label-2);
-    transition: transform var(--spring-snappy-dur) var(--spring-snappy);
-  }
-  .faq details[open] .faq-chev {
-    transform: rotate(90deg);
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .faq details::details-content {
-      block-size: 0;
-      overflow: clip;
-      transition:
-        block-size var(--spring-smooth-dur) var(--spring-smooth),
-        content-visibility var(--spring-smooth-dur) allow-discrete;
-    }
-    .faq details[open]::details-content {
-      block-size: auto;
-    }
-  }
-  .faq details p {
-    margin: 0;
-    padding: 0 0 20px;
-    font-size: 17px;
-    line-height: 26px;
-    color: var(--color-label-2);
-    white-space: pre-line;
   }
 
   /* 모집 카드: 화면에 들어오며 조금 작은 크기에서 제 크기로 커진다(스크롤에 묶임, Apple의 프레임 진입). */
