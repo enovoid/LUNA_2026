@@ -1,18 +1,22 @@
 // 홈 스크롤 인트로. 스크롤 진행률 p(0~1) 하나로 모든 레이어를 계산한다.
-// - GSAP 타임라인 하나 + ScrollTrigger(scrub). 고정은 pin 대신 CSS sticky.
+// - GSAP 타임라인 하나 + ScrollTrigger(scrub). 고정은 pin 대신 CSS sticky. 스크롤 잠금·자동 스냅 없음.
 // - 레이어는 transform·opacity만 바꾼다. 한 프레임에 한 번(render)만 스타일을 쓴다.
-// - 움직임 줄이기 설정이면 GSAP을 아예 내려받지 않는다(CSS가 정적 최종 화면을 보여 줌).
+// - 움직임 줄이기 설정이면 GSAP을 아예 내려받지 않는다(CSS가 정적 화면을 보여 줌).
 //
-// 타임라인(p)
-//   0.00–0.06  안내 문구가 사라진다
-//   0.06–0.44  하늘이 달 중심으로 확대(지수)되고 달이 화면 가운데로 온다. 배율은 site.ts의 zoom에서 멈춘다
-//   0.20–0.38  도시가 하늘보다 빠르게 커지며(시차) 사라진다
-//   0.24–0.46  달 둘레에 라벤더 빛이 번지고, 달 바깥이 브랜드 배경으로 어두워진다
-//   0.44–0.58  달이 같은 자리·같은 크기의 루나 로고로 바뀐다(사진이 먼저 어두워지고 로고가 떠오름)
-//   0.58–0.68  로고가 제 크기로 자리 잡는다
-//   0.68–0.80  로고 곡선 안쪽에서 "LUNA" 글자가 옆으로 나오고 로고는 왼쪽으로 비켜 선다
-//   0.78–0.88  "IT SOCIAL VENTURE · SINCE …" + "세상을 비추는 달, LUNA"
-//   0.94–1.00  묶음이 살짝 위로 빠지고 상단 내비 로고가 나타난다 → 소개 문단으로 이어짐
+// 타임라인(p). 달→로고 전환은 사용자가 맞춰 둔 PR #7 흐름 그대로이고(흰 화면 없음), 뒤에 구름 구간을 이어 붙였다.
+// 앞부분 구간 길이(px)는 예전과 같도록 p를 travel 비율(2.8 → 3.8)만큼 줄였다.
+//   0.00–0.04  안내 문구가 사라진다
+//   0.04–0.32  하늘이 달 중심으로 확대(지수)되고 달이 화면 가운데로 온다. 배율은 site.ts의 zoom에서 멈춘다
+//   0.15–0.28  도시가 하늘보다 빠르게 커지며(시차) 사라진다
+//   0.18–0.34  달 둘레에 라벤더 빛이 번지고, 달 바깥이 어두워진다
+//   0.32–0.42  달이 같은 자리·같은 크기의 루나 로고로 바뀐다(사진이 먼저 어두워지고 로고가 떠오름)
+//   0.42–0.50  로고가 제 크기로 자리 잡는다
+//   0.50–0.58  로고 곡선 안쪽에서 "LUNA" 글자가 옆으로 나오고 로고는 왼쪽으로 비켜 선다
+//   0.57–0.64  "IT SOCIAL VENTURE · SINCE …" + "세상을 비추는 달, LUNA"
+//   0.64–0.72  로고와 제목이 완전히 보이는 구간
+//   0.72–0.90  구름이 닫히며 로고를 덮는다(사용자 요청: "구름 뒤로 로고가 숨었으면")
+//   0.80–0.92  구름 틈새를 바탕색 막이 채우고 아래쪽 22%가 바탕색으로 어두워진다 → 다음 섹션과 이음새 없음
+//   0.92–1.00  상단 내비 로고가 나타난다 → 소개 문단으로 이어짐
 
 import { springEase } from '../lib/motion';
 
@@ -37,7 +41,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 if (section && !reduceMotion.matches) {
   start(section).catch((error: unknown) => {
-    // GSAP을 못 불러오면(네트워크 오류 등) 애니메이션 없이 최종 화면으로 바꾼다.
+    // GSAP을 못 불러오면(네트워크 오류 등) 애니메이션 없이 정적 화면으로 바꾼다.
     console.error('[intro] 애니메이션을 시작하지 못해 정적 화면으로 바꿉니다.', error);
     section.classList.add('is-static');
     showNavLogo();
@@ -58,6 +62,10 @@ async function start(root: HTMLElement) {
   const city = q('city');
   const ring = q('ring');
   const dark = q('dark');
+  const curtain = q('curtain');
+  const cloudTop = q('cloudTop');
+  const cloudBottom = q('cloudBottom');
+  const fade = q('fade');
   const content = q('content');
   const logo = q('logo');
   const logoBox = root.querySelector<HTMLElement>('[data-measure="logo"]');
@@ -72,6 +80,10 @@ async function start(root: HTMLElement) {
     !city ||
     !ring ||
     !dark ||
+    !curtain ||
+    !cloudTop ||
+    !cloudBottom ||
+    !fade ||
     !content ||
     !logo ||
     !logoBox ||
@@ -81,6 +93,11 @@ async function start(root: HTMLElement) {
   ) {
     return;
   }
+
+  // 구름은 첫 화면 로딩(하늘·도시 사진)이 끝난 뒤에 받는다. 닫히는 구간까지는 스크롤이 한참 남아 있다.
+  const showClouds = () => root.classList.add('has-clouds');
+  if (document.readyState === 'complete') showClouds();
+  else window.addEventListener('load', showClouds, { once: true });
 
   const [{ gsap }, { ScrollTrigger }] = await Promise.all([
     import('gsap'),
@@ -102,7 +119,8 @@ async function start(root: HTMLElement) {
     settle: 0,
     lock: 0,
     title: 0,
-    leave: 0,
+    cloud: 0,
+    curtain: 0,
     nav: 0,
   };
 
@@ -131,6 +149,10 @@ async function start(root: HTMLElement) {
     const tx = `calc(-50% + ${((50 - c.mx) * s.k).toFixed(3)}%)`;
     const ty = `calc(-50% + ${((50 - c.my) * s.k).toFixed(3)}%)`;
 
+    // 어두운 막이 다 덮은 뒤에는 사진 레이어를 그리지 않는다(합성 비용 절약).
+    const photoVisible = s.dim < 1 ? '' : 'hidden';
+    sky.style.visibility = photoVisible;
+    city.style.visibility = s.cityOut < 1 ? photoVisible : 'hidden';
     sky.style.transform = `translate3d(${tx}, ${ty}, 0) scale(${skyScale.toFixed(4)})`;
     city.style.transform = `translate3d(${tx}, ${ty}, 0) scale(${cityScale.toFixed(4)})`;
     city.style.opacity = (1 - s.cityOut).toFixed(3);
@@ -150,10 +172,18 @@ async function start(root: HTMLElement) {
     // 창 왼쪽 여백(로고 뒤에 숨는 부분)까지 완전히 비켜 있어야 글자 끝이 미리 비치지 않는다.
     const hide = 1 - s.lock;
     wordmark.style.transform = `translate3d(calc(${(-100 * hide).toFixed(2)}% - var(--logo) * ${(0.5 * hide).toFixed(3)}), 0, 0)`;
-
-    title.style.opacity = (s.title * (1 - s.leave * 0.6)).toFixed(3);
+    title.style.opacity = s.title.toFixed(3);
     title.style.transform = `translate3d(0, ${(24 * (1 - s.title)).toFixed(1)}px, 0)`;
-    content.style.transform = `translate3d(0, ${(-40 * s.leave).toFixed(1)}px, 0) scale(${(1 - 0.08 * s.leave).toFixed(4)})`;
+
+    // 구름: 자기 크기 기준 %로 화면 밖(102%)에서 제자리로. 가로로는 서로 반대로 흐른다. 로고 위를 덮는다.
+    const open = 1 - s.cloud;
+    cloudTop.style.transform = `translate3d(${(8 * open).toFixed(2)}%, ${(-102 * open).toFixed(2)}%, 0)`;
+    cloudBottom.style.transform = `translate3d(${(-50 - 6 * open).toFixed(2)}%, ${(102 * open).toFixed(2)}%, 0)`;
+    curtain.style.opacity = s.curtain.toFixed(3);
+    fade.style.opacity = s.curtain.toFixed(3);
+    // 구름과 막이 다 덮은 뒤에는 묶음을 그리지 않는다.
+    content.style.visibility = s.curtain < 1 ? '' : 'hidden';
+
     hint.style.opacity = (1 - s.hint).toFixed(3);
     if (navLogo) navLogo.style.opacity = s.nav.toFixed(3);
   };
@@ -195,20 +225,21 @@ async function start(root: HTMLElement) {
       from,
     );
 
-  span('hint', 0, 0.06);
-  span('z', 0.06, 0.44);
-  span('zc', 0.06, 0.38);
-  span('k', 0.06, 0.4, smooth);
-  span('cityOut', 0.2, 0.38, smooth);
-  span('glow', 0.24, 0.44, smooth);
-  span('ring', 0.24, 0.46, smooth);
-  span('dim', 0.44, 0.55, smooth); // 사진이 먼저 어두워지고
-  span('morph', 0.47, 0.58, smooth); // 그 자리에서 로고가 떠오른다
-  span('settle', 0.58, 0.68, smooth);
-  span('lock', 0.68, 0.8, snap);
-  span('title', 0.78, 0.88, smooth);
-  span('leave', 0.94, 1, smooth);
-  span('nav', 0.94, 1);
+  span('hint', 0, 0.04);
+  span('z', 0.04, 0.32);
+  span('zc', 0.04, 0.28);
+  span('k', 0.04, 0.29, smooth);
+  span('cityOut', 0.15, 0.28, smooth);
+  span('glow', 0.18, 0.32, smooth);
+  span('ring', 0.18, 0.34, smooth);
+  span('dim', 0.32, 0.4, smooth); // 사진이 먼저 어두워지고
+  span('morph', 0.34, 0.42, smooth); // 그 자리에서 로고가 떠오른다
+  span('settle', 0.42, 0.5, smooth);
+  span('lock', 0.5, 0.58, snap);
+  span('title', 0.57, 0.64, smooth);
+  span('cloud', 0.72, 0.9, smooth);
+  span('curtain', 0.8, 0.92, smooth);
+  span('nav', 0.92, 1);
 
   measure();
   render();
@@ -235,7 +266,22 @@ async function start(root: HTMLElement) {
     if (!e.matches) return;
     tl.scrollTrigger?.kill();
     tl.kill();
-    for (const el of [sky, city, ring, dark, content, logo, wordmark, title, hint, glow, navLogo]) {
+    for (const el of [
+      sky,
+      city,
+      ring,
+      dark,
+      curtain,
+      cloudTop,
+      cloudBottom,
+      fade,
+      content,
+      logo,
+      wordmark,
+      title,
+      hint,
+      glow,
+    ]) {
       el?.removeAttribute('style');
     }
     root.classList.add('is-static');

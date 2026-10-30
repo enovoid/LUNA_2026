@@ -50,9 +50,10 @@ ${base.join('\n')}
 ${light.join('\n')}
 }
 
-/* 사이트는 밤하늘 톤 하나만 쓴다(<html class="theme-dark">). data-theme 속성은 사이트를 감싸는 쪽(미리보기 등)이
-   바꿀 수 있어 클래스로 고정한다. */
-:root.theme-dark {
+/* 사이트는 다크 하나만 쓴다(<html data-theme="dark" class="theme-dark">). data-theme 속성은 사이트를 감싸는 쪽
+   (미리보기 등)이 바꿀 수 있어 클래스로도 고정한다. TODO: prefers-color-scheme 라이트 지원 */
+:root.theme-dark,
+[data-theme="dark"] {
 ${dark.join('\n')}
 }
 `;
