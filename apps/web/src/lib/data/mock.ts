@@ -29,7 +29,7 @@ export const mockData: SiteData = {
       target: '재학생 누구나',
       applyUrl: 'https://example.com/apply',
     },
-    contact: { email: '', instagram: 'https://instagram.com/', github: '' },
+    contact: { email: '', instagram: 'https://www.instagram.com/dimigo_luna/', github: '' },
   },
   members: names.map((name, i) => ({
     id: `mock-member-${i}`,

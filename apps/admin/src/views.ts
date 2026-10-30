@@ -75,7 +75,7 @@ const PLACEHOLDERS: Record<string, string> = {
   target: '재학생 누구나',
   applyUrl: 'https://forms.gle/…',
   email: 'luna@example.com',
-  instagram: 'https://instagram.com/…',
+  instagram: 'https://www.instagram.com/dimigo_luna/',
   github: 'https://github.com/…',
 };
 
