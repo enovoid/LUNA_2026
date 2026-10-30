@@ -1,4 +1,5 @@
 import type { PageObjectResponse } from '@notionhq/client';
+import notionSdk from '@notionhq/client';
 import PQueue from 'p-queue';
 import { type CliOptions, DATABASE_NAMES, type DatabaseName } from './config.js';
 import type { Dispatcher } from './dispatch.js';
@@ -22,6 +23,9 @@ import type { ContentStore, ExistingRow, RunResult } from './store.js';
  */
 export const INCREMENTAL_OVERLAP_MS = 5 * 60_000;
 /** 페이지(이미지 다운로드·변환·업로드 포함)를 동시에 몇 개까지 처리할지. Notion API 요청은 별도 대기열을 거친다. */
+// SDK는 CommonJS라 값은 기본 내보내기에서 꺼낸다(notion/client.ts 참고).
+const { APIErrorCode } = notionSdk;
+
 const PAGE_CONCURRENCY = 4;
 
 export interface SyncDeps {
@@ -71,8 +75,8 @@ function pageLabel(page: PageObjectResponse): string {
 /** 자주 생기는 Notion 설정 문제에 고칠 방법을 덧붙인다. */
 export function notionHint(error: unknown): string {
   const code = (error as { code?: unknown }).code;
-  if (code === 'unauthorized') return ' (NOTION_TOKEN이 틀렸거나 integration이 삭제됨)';
-  if (code === 'object_not_found' || code === 'restricted_resource') {
+  if (code === APIErrorCode.Unauthorized) return ' (NOTION_TOKEN이 틀렸거나 integration이 삭제됨)';
+  if (code === APIErrorCode.ObjectNotFound || code === APIErrorCode.RestrictedResource) {
     return ' (DB ID가 맞는지, 그 DB의 "연결"에 integration을 추가했는지 확인)';
   }
   return '';

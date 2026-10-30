@@ -4,6 +4,7 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
+  S3ServiceException,
 } from '@aws-sdk/client-s3';
 import type { R2Config } from './config.js';
 
@@ -36,9 +37,9 @@ export class R2Store implements ObjectStore {
       await this.#client.send(new HeadObjectCommand({ Bucket: this.#bucket, Key: key }));
       return true;
     } catch (error) {
-      const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata
-        ?.httpStatusCode;
-      if (status === 404) return false;
+      // HEAD 응답에는 본문이 없어 오류 이름 대신 상태 코드로 판단한다.
+      if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 404)
+        return false;
       throw error;
     }
   }

@@ -25,7 +25,11 @@ GitHub Actions: Astro 빌드(Postgres 읽기) → Cloudflare 정적 배포
 
 ## 로컬 실행
 
-필요: Node ≥ 22.23.4 (`.nvmrc`), pnpm 10 (`corepack enable`), 로컬 Postgres.
+필요: Node 26 LTS, pnpm 12, 로컬 Postgres. 두 버전은 루트 `package.json`의 `devEngines.runtime`(Node)과 `packageManager`(pnpm) 한 곳에서 정하고, GitHub Actions(`pnpm/setup`)와 Railway(Railpack)도 같은 값을 읽는다.
+
+- pnpm 설치: `npx get-pnpm` 또는 `npm install -g pnpm@latest` (pnpm 12는 Node 없이 도는 단일 실행 파일이다. Node 25부터 corepack이 Node에 들어 있지 않아 `corepack enable`은 쓰지 않는다)
+- Node 설치: `pnpm runtime set node 26` 또는 nvm·fnm 등. 다른 버전이면 `pnpm install`이 멈추고 알려 준다
+- 새로 나온 지 하루가 안 된 패키지 버전은 설치하지 않는다(pnpm 기본값 `minimumReleaseAge`, 공급망 사고 대비)
 
 ```bash
 pnpm install
@@ -52,7 +56,7 @@ pnpm dev                    # 사이트 개발 서버
 
 ## Biome 사용 메모
 
-lint·format은 ESLint/Prettier 대신 Biome 하나로 쓴다. 한 가지 한계: **Biome는 `.astro` 파일의 frontmatter(`---` 안쪽 TypeScript)만 부분적으로 지원**하고 템플릿 부분은 검사하지 않는다. 그래서 `.astro` 템플릿과 타입은 `astro check`(`pnpm typecheck`)가 맡는다. 필요하면 `biome.json`의 `overrides`로 `.astro` 파일의 일부 규칙(예: `noUnusedImports`)을 끈다.
+lint·format은 ESLint/Prettier 대신 Biome 하나로 쓴다. 한 가지 한계: **Biome는 `.astro` 파일의 frontmatter(`---` 안쪽 TypeScript)만 부분적으로 지원**하고 템플릿 부분은 검사하지 않는다. 그래서 `.astro` 템플릿과 타입은 `astro check`(`pnpm typecheck`)가 맡는다. 그래서 `biome.json`은 Biome 권장 규칙(`recommended`)을 켜고, `.astro` 파일만 `overrides`로 템플릿에서 쓰는 변수를 못 보는 규칙(`noUnusedVariables`, `noUnusedImports`, `useConst`, `useImportType`)을 끈다. `noNonNullAssertion`은 끈다(`noUncheckedIndexedAccess`를 켜 둬서 `!`는 일부러 쓰는 표시다).
 
 ## 커밋 컨벤션
 
@@ -74,6 +78,8 @@ lint·format은 ESLint/Prettier 대신 Biome 하나로 쓴다. 한 가지 한계
 | `sync.yml`         | 관리자 페이지의 "지금 다시 동기화", 수동                                             | Notion → Postgres/R2 동기화(Railway Cron과 같은 코드, 겹치면 건너뜀)         |
 | `deploy-admin.yml` | main 푸시 중 `apps/admin`·`packages/db` 변경, 수동                                   | 관리자 Worker 배포                                                           |
 
+모든 워크플로는 `pnpm/setup`으로 pnpm·Node를 `package.json`에서 읽어 설치한다(`actions/setup-node` 없음). 액션은 커밋 SHA로 고정하고 Dependabot(`.github/dependabot.yml`)이 주 1회 갱신 PR을 연다. 서비스별 공식 권장 방식과 맞춘 내역은 [`docs/official-recommendations-2026-10.md`](docs/official-recommendations-2026-10.md).
+
 GitHub 저장소 **Settings → Secrets and variables → Actions**에 등록: `DATABASE_URL`, `R2_PUBLIC_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. 수동 동기화(`sync.yml`)를 쓰려면 Notion·R2 값도 필요하다([`apps/admin/README.md`](apps/admin/README.md)).
 배포 때 `pnpm db:migrate`가 먼저 돌아 새 마이그레이션이 자동으로 적용된다.
 `DATABASE_URL`은 Railway Postgres의 **공개(TCP proxy) 주소**여야 GitHub 러너에서 접속된다.
@@ -91,8 +97,7 @@ GitHub 저장소 **Settings → Secrets and variables → Actions**에 등록: `
 - [ ] 프로젝트 생성 → **Postgres** 추가
 - [ ] Postgres의 **TCP Proxy(공개 네트워크)** 켜기 → 외부용 URL을 GitHub Secret `DATABASE_URL`에 (Railway 내부 서비스끼리는 내부 URL 사용)
 - [ ] 처음 한 번 `DATABASE_URL`을 외부 URL로 두고 로컬에서 `pnpm db:migrate`
-- [ ] 저장소 연결로 서비스 추가(`sync`): Root Directory는 저장소 루트, Build `pnpm install --frozen-lockfile`, Start `pnpm --filter @luna/sync start` (자세한 동작은 [`packages/sync/README.md`](packages/sync/README.md))
-- [ ] `sync` 서비스 Settings → **Cron Schedule** `*/15 * * * *` (UTC, 최소 간격 5분)
+- [ ] 저장소 연결로 서비스 추가(`sync`): Root Directory는 저장소 루트(비워 둠), Settings → **Config-as-code → Railway Config File**에 `/packages/sync/railway.json` 입력. 빌드·시작 명령, Cron Schedule(`*/15 * * * *`, UTC), 재시작 정책(NEVER), 배포를 일으키는 경로가 이 파일에 있고 대시보드 값보다 우선한다 (자세한 동작은 [`packages/sync/README.md`](packages/sync/README.md))
 - [ ] `sync` 서비스 Variables: `NOTION_TOKEN`, `NOTION_DB_*`, `DATABASE_URL`(내부 참조 `${{Postgres.DATABASE_URL}}`), `R2_*`, `GITHUB_DISPATCH_TOKEN`
 - [ ] Cron 서비스는 실행이 끝나면 프로세스가 종료된다. sync는 성공 0, 일부 실패 1, 시작 불가(설정·스키마 문제) 2로 끝나니 Railway에서 실패한 실행을 볼 수 있다
 
@@ -102,7 +107,7 @@ GitHub 저장소 **Settings → Secrets and variables → Actions**에 등록: `
 - [ ] R2 API 토큰(해당 버킷 Object Read & Write) → `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, 계정 ID `R2_ACCOUNT_ID`
 - [ ] 배포용 API 토큰(Workers 편집 권한) → GitHub Secret `CLOUDFLARE_API_TOKEN`, 계정 ID `CLOUDFLARE_ACCOUNT_ID`
 - [ ] 사이트 도메인 연결(Workers → Settings → Domains) 후 `apps/web/astro.config.mjs`의 `site` 지정
-- [ ] TODO: Workers Static Assets와 Pages 중 현재 권장 방식을 Cloudflare 문서로 확인(`apps/web/wrangler.jsonc`는 Workers Static Assets 기준 초안)
+- 사이트는 Pages가 아니라 **Workers Static Assets**로 배포한다. Cloudflare·Astro 문서 모두 새 프로젝트에 Workers를 권장한다(`apps/web/wrangler.jsonc`). wrangler는 `apps/web` devDependency라 로컬(`pnpm --filter @luna/web deploy`)과 Actions가 같은 버전을 쓴다
 
 ### GitHub
 

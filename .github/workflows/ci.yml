@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
+        # Railway Postgres 템플릿(postgres-ssl:latest)과 같은 메이저 버전
         image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
@@ -29,15 +30,15 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+          persist-credentials: false
+      # pnpm(packageManager)과 Node.js(devEngines.runtime)를 package.json에서 읽어 설치하고 pnpm install까지 한다.
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          cache: true
+          require-lockfile: true
       - name: 커밋 메시지 검사 (Conventional Commits)
         if: github.event_name == 'pull_request'
         run: pnpm exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}

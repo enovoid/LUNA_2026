@@ -1,6 +1,7 @@
 {
-  // Cloudflare Workers Static Assets로 dist를 배포한다.
-  // TODO: Cloudflare 문서에서 현재 권장 방식(Workers Static Assets vs Pages)을 확인하고 name·도메인을 확정
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // 정적 사이트를 Cloudflare Workers Static Assets로 배포한다.
+  // Cloudflare·Astro 문서 모두 새 프로젝트에는 Pages 대신 Workers를 권장한다. 정적 사이트라 main(Worker 코드)과 어댑터는 필요 없다.
   "name": "luna-2026",
   "compatibility_date": "2026-10-01",
   "assets": {

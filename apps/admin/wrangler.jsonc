@@ -1,4 +1,5 @@
 {
+  "$schema": "./node_modules/wrangler/config-schema.json",
   // LUNA 관리자 Worker. 공개 사이트(apps/web)와 따로 배포하고, Cloudflare Access로 운영진만 들어오게 한다.
   // 설정 순서는 apps/admin/README.md 참고.
   "name": "luna-admin",
