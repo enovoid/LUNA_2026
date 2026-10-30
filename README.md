@@ -31,14 +31,16 @@ pnpm db:migrate             # 마이그레이션 적용
 pnpm dev                    # 사이트 개발 서버
 ```
 
-| 명령                          | 설명                                                     |
-| ----------------------------- | -------------------------------------------------------- |
-| `pnpm lint` / `pnpm lint:fix` | Biome 검사 / 자동 수정 (lint + format + import 정렬)     |
-| `pnpm format`                 | Biome 포맷                                               |
-| `pnpm typecheck`              | 모든 패키지 타입 검사 (`tsc`, 웹은 `astro check`)        |
-| `pnpm build`                  | 사이트 빌드                                              |
-| `pnpm db:generate`            | `packages/db/src/schema.ts` 변경 뒤 새 마이그레이션 생성 |
-| `pnpm db:migrate`             | `DATABASE_URL`에 마이그레이션 적용                       |
+| 명령                          | 설명                                                                  |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `pnpm lint` / `pnpm lint:fix` | Biome 검사 / 자동 수정 (lint + format + import 정렬)                  |
+| `pnpm format`                 | Biome 포맷                                                            |
+| `pnpm typecheck`              | 모든 패키지 타입 검사 (`tsc`, 웹은 `astro check`)                     |
+| `pnpm build`                  | 사이트 빌드                                                           |
+| `pnpm db:generate`            | `packages/db/src/schema.ts` 변경 뒤 새 마이그레이션 생성              |
+| `pnpm db:migrate`             | `DATABASE_URL`에 마이그레이션 적용                                    |
+| `pnpm test`                   | 모든 패키지 테스트 (Vitest)                                           |
+| `pnpm sync`                   | Notion → Postgres/R2 동기화 (`--full`, `--dry-run`, `--check-schema`) |
 
 ### 스키마를 바꿀 때
 
@@ -56,6 +58,7 @@ lint·format은 ESLint/Prettier 대신 Biome 하나로 쓴다. 한 가지 한계
 - scope(선택): `web` `db` `sync` `ci` 등. 예: `feat(db): members 테이블에 sort 열 추가`
 - 설명은 한글이어도 되고, 제목은 마침표 없이 짧게. 본문에 이유를 적는다.
 - 하위 호환이 깨지면 `feat!:` 또는 본문에 `BREAKING CHANGE:`.
+- 커밋 메시지에 **세션·계정 정보**(`Claude-Session:`·`Co-Authored-By:` 트레일러, 세션 링크, 이메일 주소)를 넣지 않는다.
 - PR 단위로 CI(`commitlint`)가 PR의 모든 커밋 메시지를 검사한다.
 
 ## CI / 배포 (GitHub Actions)
@@ -81,10 +84,10 @@ GitHub 저장소 **Settings → Secrets and variables → Actions**에 등록: `
 - [ ] 프로젝트 생성 → **Postgres** 추가
 - [ ] Postgres의 **TCP Proxy(공개 네트워크)** 켜기 → 외부용 URL을 GitHub Secret `DATABASE_URL`에 (Railway 내부 서비스끼리는 내부 URL 사용)
 - [ ] 처음 한 번 `DATABASE_URL`을 외부 URL로 두고 로컬에서 `pnpm db:migrate`
-- [ ] 저장소 연결로 서비스 추가(`sync`): Root Directory는 저장소 루트, Build `pnpm install --frozen-lockfile`, Start `pnpm sync` (※ `packages/sync` 구현 후 확정)
+- [ ] 저장소 연결로 서비스 추가(`sync`): Root Directory는 저장소 루트, Build `pnpm install --frozen-lockfile`, Start `pnpm --filter @luna/sync start` (자세한 동작은 [`packages/sync/README.md`](packages/sync/README.md))
 - [ ] `sync` 서비스 Settings → **Cron Schedule** `*/15 * * * *` (UTC, 최소 간격 5분)
 - [ ] `sync` 서비스 Variables: `NOTION_TOKEN`, `NOTION_DB_*`, `DATABASE_URL`(내부 참조 `${{Postgres.DATABASE_URL}}`), `R2_*`, `GITHUB_DISPATCH_TOKEN`
-- [ ] Cron 서비스는 실행이 끝나면 프로세스가 종료되어야 한다(sync가 종료 코드를 반환해야 함)
+- [ ] Cron 서비스는 실행이 끝나면 프로세스가 종료된다. sync는 성공 0, 일부 실패 1, 시작 불가(설정·스키마 문제) 2로 끝나니 Railway에서 실패한 실행을 볼 수 있다
 
 ### Cloudflare
 
