@@ -58,6 +58,7 @@
   - `apps/web`: Workers Static Assets로 확정(README의 TODO 제거), `wrangler`를 devDependency로, `deploy` 스크립트, `wrangler.jsonc`에 `$schema`.
   - `apps/admin`: `@cloudflare/workers-types` 제거, `wrangler types --include-env=false`로 `worker-configuration.d.ts` 생성·커밋(호환성 날짜·`nodejs_compat`에 맞는 런타임 타입). `typecheck`가 `wrangler types --check`로 생성 파일이 최신인지 먼저 본다. `Env`는 대시보드에서 넣는 Secret이 있어 기존 `src/env.ts`를 그대로 쓴다. `wrangler.jsonc`에 `$schema`.
   - R2: 404 판별을 `S3ServiceException` 타입으로 바꿨다. `requestChecksumCalculation: 'WHEN_REQUIRED'`는 유지했다. R2 호환 표에서 CRC32는 COMPOSITE만 지원하고, SDK 기본값은 단일 PUT에 전체 객체 CRC32를 보내기 때문이다.
+  - (이후 변경) R2는 결제 수단 등록이 필요해 쓰지 않기로 했다. 사진은 Postgres `image_files`에 WebP로 두고, Astro 정적 엔드포인트(`src/pages/img/[...file].ts`, `getStaticPaths`)가 빌드 때 `dist/img/`로 내보내 Workers Static Assets로 함께 배포한다. 정적 출력에서 HTML이 아닌 파일을 만드는 Astro 공식 방식이고, `/img/*`는 `_headers`로 1년 immutable 캐시. `@aws-sdk/client-s3`와 `R2_*` 환경 변수는 지웠다.
 - 건드리지 않은 것: Cloudflare Access 검증 로직과 관리자 Worker 동작(관리자 스레드 담당). 관리자 Worker가 Postgres에 직접 연결하는데, Cloudflare는 Workers에서 Postgres를 쓸 때 Hyperdrive를 권장한다. 코드는 이미 `HYPERDRIVE` 바인딩이 있으면 쓰도록 되어 있으니 바인딩만 만들면 된다(선택).
 
 ### Railway (Postgres, Cron)
@@ -70,7 +71,7 @@
 ### Astro 7 (+ React, Tailwind v4, GSAP)
 
 - 근거: Astro 문서 Environment variables(`astro:env` 스키마로 타입 안전하게), Upgrade to v7, Styling(Tailwind v4는 `@tailwindcss/vite` 플러그인), `@astrojs/react` 7.
-- 바꾼 것: `astro.config.mjs`에 `env.schema`(`DATABASE_URL` secret, `LUNA_DATA_SOURCE` enum `db|mock`, `R2_PUBLIC_URL` url, `CI` boolean). `lib/data`·`lib/image`가 `astro:env/server`에서 읽는다. 값이 형식에 맞지 않으면(예: `LUNA_DATA_SOURCE=nope`) 빌드가 시작 전에 멈춘다. `SITE_URL`은 설정 파일 안에서 쓰여 `astro:env`로 읽을 수 없어 그대로 `process.env`.
+- 바꾼 것: `astro.config.mjs`에 `env.schema`(`DATABASE_URL` secret, `LUNA_DATA_SOURCE` enum `db|mock`, `CI` boolean; `R2_PUBLIC_URL`은 R2를 쓰지 않게 되며 뺐다). `lib/data`·`lib/image`가 `astro:env/server`에서 읽는다. 값이 형식에 맞지 않으면(예: `LUNA_DATA_SOURCE=nope`) 빌드가 시작 전에 멈춘다. `SITE_URL`은 설정 파일 안에서 쓰여 `astro:env`로 읽을 수 없어 그대로 `process.env`.
 - 확인만 한 것: v7 업그레이드 가이드의 항목(실험 플래그, Rust 컴파일러, `compressHTML: 'jsx'` 기본값)에 걸리는 곳은 없고 빌드가 통과한다. Tailwind v4(`@tailwindcss/vite` + `@import "tailwindcss"` + `@theme`), React 19.3 섬, GSAP 동적 import + `registerPlugin`은 이미 권장 방식이다.
 - 하지 않은 것: 프론트엔드 성능 작업(React Compiler, 하이드레이션 지시어, 캐시 헤더 등)과 달빛 커서는 다른 스레드 담당이라 건드리지 않았다.
 

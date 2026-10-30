@@ -35,7 +35,7 @@
 
 ### 1. GitHub
 
-- [ ] **Actions Secrets 추가**(Settings → Secrets and variables → Actions): 수동 동기화가 GitHub에서 돌기 때문에 Railway `sync` 서비스와 같은 값이 필요하다. `NOTION_TOKEN`, `NOTION_DB_MEMBERS`, `NOTION_DB_AWARDS`, `NOTION_DB_PROJECTS`, `NOTION_DB_FAQ`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`
+- [ ] **Actions Secrets 추가**(Settings → Secrets and variables → Actions): 수동 동기화가 GitHub에서 돌기 때문에 Railway `sync` 서비스와 같은 값이 필요하다. `NOTION_TOKEN`, `NOTION_DB_MEMBERS`, `NOTION_DB_AWARDS`, `NOTION_DB_PROJECTS`, `NOTION_DB_FAQ`
 - [ ] **관리자용 fine-grained token** 만들기(GitHub → Settings → Developer settings → Fine-grained tokens): Repository access는 이 저장소만, Permissions는 **Actions: Read and write** 하나. Railway의 `GITHUB_DISPATCH_TOKEN`과 따로 둔다.
 
 ### 2. Worker 배포

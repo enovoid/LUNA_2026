@@ -4,6 +4,7 @@ import PQueue from 'p-queue';
 import { type CliOptions, DATABASE_NAMES, type DatabaseName } from './config.js';
 import type { Dispatcher } from './dispatch.js';
 import { deserializeCache, ImagePipeline, serializeCache } from './image-pipeline.js';
+import type { ObjectStore } from './image-store.js';
 import type { ProcessedImage } from './images.js';
 import { errorMessage, type Logger } from './logger.js';
 import { DATABASES_WITH_IMAGES, hasImages, mapPage } from './mappers.js';
@@ -14,7 +15,6 @@ import {
   SchemaMismatchError,
   titlePropertyId,
 } from './notion/schema.js';
-import type { ObjectStore } from './r2.js';
 import type { ContentStore, ExistingRow, RunResult } from './store.js';
 
 /**
@@ -353,8 +353,9 @@ async function syncPage(
 }
 
 /**
- * DB 어디에서도 쓰지 않는 R2 이미지를 지운다.
- * 바로 지우면 아직 배포 중인 옛 사이트의 사진이 깨지니, 처음 발견한 뒤 유예 시간이 지나야 지운다.
+ * DB 어디에서도 쓰지 않는 이미지 파일을 지운다.
+ * 배포된 사이트는 자기 사본을 갖고 있지만, 진행 중인 빌드가 방금 읽은 행의 파일을 꺼내기 전에 지우지 않도록
+ * 처음 발견한 뒤 유예 시간이 지나야 지운다.
  */
 async function collectOrphans(
   objects: ObjectStore,
@@ -364,7 +365,7 @@ async function collectOrphans(
   now: Date,
   logger: Logger,
 ): Promise<number> {
-  const previous = (await store.getState('_r2_orphans'))?.lastResult;
+  const previous = (await store.getState('_image_orphans'))?.lastResult;
   const firstSeen = new Map<string, string>(
     previous && typeof previous === 'object'
       ? Object.entries(previous as Record<string, unknown>).filter(
@@ -394,8 +395,12 @@ async function collectOrphans(
 
   if (expired.length > 0) {
     await objects.deleteKeys(expired);
-    logger.info(`R2: 쓰이지 않는 이미지 파일 ${expired.length}개 삭제`);
+    logger.info(`image_files: 쓰이지 않는 이미지 파일 ${expired.length}개 삭제`);
   }
-  await store.saveState('_r2_orphans', { lastRunAt: now, lastResult: nextSeen, lastError: null });
+  await store.saveState('_image_orphans', {
+    lastRunAt: now,
+    lastResult: nextSeen,
+    lastError: null,
+  });
   return expired.length;
 }

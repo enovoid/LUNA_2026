@@ -4,12 +4,14 @@ import {
   createDb,
   emptySettings,
   faqs,
+  imageFiles,
   members,
   parseSettings,
   projects,
   type SettingsKey,
   siteSettings,
 } from '@luna/db';
+import { inArray } from 'drizzle-orm';
 import { toImageRef } from './image-ref';
 import type { SiteData, SiteSettings } from './types';
 
@@ -66,6 +68,29 @@ export async function loadFromDb(url: string): Promise<SiteData> {
         contact: readSetting(settingRows, 'contact'),
       },
     };
+  } finally {
+    await closeDb(db);
+  }
+}
+
+/** image_files에서 주어진 키의 WebP 파일을 꺼낸다. 없는 키는 결과에 빠진다. */
+export async function loadImageFilesFromDb(
+  url: string,
+  keys: readonly string[],
+): Promise<Map<string, Uint8Array<ArrayBuffer>>> {
+  const files = new Map<string, Uint8Array<ArrayBuffer>>();
+  if (keys.length === 0) return files;
+  const db = createDb(url);
+  try {
+    for (let i = 0; i < keys.length; i += 200) {
+      const rows = await db
+        .select({ key: imageFiles.key, body: imageFiles.body })
+        .from(imageFiles)
+        .where(inArray(imageFiles.key, keys.slice(i, i + 200)));
+      // Response 본문은 ArrayBuffer 기반이어야 해서 Buffer를 복사해 둔다.
+      for (const row of rows) files.set(row.key, new Uint8Array(row.body));
+    }
+    return files;
   } finally {
     await closeDb(db);
   }

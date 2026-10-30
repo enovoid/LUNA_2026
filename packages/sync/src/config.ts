@@ -5,26 +5,18 @@ export const DATABASE_NAMES: readonly DatabaseName[] = ['members', 'awards', 'pr
 export interface CliOptions {
   /** 마지막 동기화 시각을 무시하고 모든 페이지를 다시 읽는다. */
   full: boolean;
-  /** DB·R2 쓰기와 dispatch 없이 무엇이 바뀔지만 보여 준다. */
+  /** DB 쓰기와 dispatch 없이 무엇이 바뀔지만 보여 준다. */
   dryRun: boolean;
   /** Notion 스키마만 확인하고 끝낸다. */
   checkSchema: boolean;
-}
-
-export interface R2Config {
-  accountId: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  bucket: string;
 }
 
 export interface SyncConfig {
   notionToken: string;
   notionDatabaseIds: Record<DatabaseName, string>;
   databaseUrl: string | undefined;
-  r2: R2Config | undefined;
   dispatch: { token: string; repository: string } | undefined;
-  /** 쓰이지 않게 된 R2 이미지를 지우기 전에 기다리는 시간. 배포 중인 옛 사이트가 깨지지 않게 한다. */
+  /** 쓰이지 않게 된 이미지 파일을 지우기 전에 기다리는 시간. 진행 중인 사이트 빌드가 꺼낼 파일을 지우지 않게 한다. */
   orphanGraceMs: number;
 }
 
@@ -76,17 +68,10 @@ export function loadConfig(env: Env, options: CliOptions): SyncConfig {
 
   const writes = !options.dryRun && !options.checkSchema;
   let databaseUrl = read(env, 'DATABASE_URL');
-  let r2: R2Config | undefined;
   let dispatch: SyncConfig['dispatch'];
 
   if (writes) {
     databaseUrl = need('DATABASE_URL');
-    r2 = {
-      accountId: need('R2_ACCOUNT_ID'),
-      accessKeyId: need('R2_ACCESS_KEY_ID'),
-      secretAccessKey: need('R2_SECRET_ACCESS_KEY'),
-      bucket: need('R2_BUCKET'),
-    };
     dispatch = {
       token: need('GITHUB_DISPATCH_TOKEN'),
       repository: read(env, 'GITHUB_DISPATCH_REPOSITORY') ?? 'enovoid/LUNA_2026',
@@ -106,7 +91,6 @@ export function loadConfig(env: Env, options: CliOptions): SyncConfig {
     notionToken,
     notionDatabaseIds,
     databaseUrl,
-    r2,
     dispatch,
     orphanGraceMs: graceMinutes * 60_000,
   };

@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { date, integer, jsonb, pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  customType,
+  date,
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 
 /** 모든 Notion 원본 테이블이 공유하는 열. 제약 이름이 테이블마다 달라지도록 호출 때마다 새로 만든다. */
 const notionColumns = () => ({
@@ -10,8 +19,8 @@ const notionColumns = () => ({
 });
 
 /**
- * 이미지 열. image_key는 R2 키 접두어 `<table>/<sha256>`이며
- * 실제 파일은 `<image_key>-480.webp`, `-960.webp`, `-1600.webp`. 너비·높이는 원본 기준.
+ * 이미지 열. image_key는 `<table>/<sha256>` 접두어이며
+ * 실제 파일은 image_files의 `<image_key>-480.webp`, `-960.webp`, `-1600.webp`. 너비·높이는 원본 기준.
  */
 const imageColumns = () => ({
   imageKey: text('image_key'),
@@ -78,6 +87,21 @@ export const siteSettings = pgTable('site_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   /** 마지막으로 고친 운영진(Cloudflare Access 이메일) */
   updatedBy: text('updated_by'),
+});
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => 'bytea',
+});
+
+/**
+ * 동기화가 만든 WebP 파일. 사이트 빌드가 `dist/img/<key>`로 꺼내 정적 파일로 함께 배포한다.
+ * 키에 원본 해시가 들어 있어 같은 키의 내용은 바뀌지 않는다.
+ */
+export const imageFiles = pgTable('image_files', {
+  key: text('key').primaryKey(),
+  body: bytea('body').notNull(),
+  contentType: text('content_type').notNull().default('image/webp'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type Member = typeof members.$inferSelect;

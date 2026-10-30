@@ -51,6 +51,25 @@ async function resolve(): Promise<SiteData> {
   }
 }
 
+/**
+ * 사이트에 쓰이는 사진 파일(WebP)을 DB에서 꺼낸다. `pages/img/[...file].ts`가 정적 파일로 내보낸다.
+ * 목업 데이터에는 사진이 없어 빈 결과다.
+ */
+export async function loadImageFiles(
+  keys: readonly string[],
+): Promise<Map<string, Uint8Array<ArrayBuffer>>> {
+  const data = await loadSiteData();
+  if (data.source !== 'db' || !DATABASE_URL) return new Map();
+  const { loadImageFilesFromDb } = await import('./db');
+  try {
+    return await loadImageFilesFromDb(DATABASE_URL, keys);
+  } catch (error) {
+    throw new Error(`[data] Postgres에서 사진 파일을 읽지 못했습니다. 원인: ${describe(error)}`, {
+      cause: error,
+    });
+  }
+}
+
 function describe(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }

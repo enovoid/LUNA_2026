@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
 import { ImagePipeline } from '../src/image-pipeline.js';
+import type { ObjectStore } from '../src/image-store.js';
 import {
   DownloadError,
   displaySize,
@@ -9,7 +10,6 @@ import {
   sha256,
   toWebpVariants,
 } from '../src/images.js';
-import type { ObjectStore } from '../src/r2.js';
 
 async function jpeg(width: number, height: number, withExif = false) {
   let image = sharp({
@@ -159,7 +159,7 @@ describe('ImagePipeline', () => {
     expect(objects.puts).toHaveLength(3);
   });
 
-  it('캐시가 있어도 R2에 파일이 없으면 다시 만든다', async () => {
+  it('캐시가 있어도 저장된 파일이 없으면 다시 만든다', async () => {
     const body = await jpeg(100, 100);
     const objects = new MemoryObjects();
     const key = `members/${sha256(body)}`;

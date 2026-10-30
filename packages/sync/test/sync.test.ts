@@ -1,12 +1,12 @@
 import type { PageObjectResponse } from '@notionhq/client';
 import { describe, expect, it, vi } from 'vitest';
 import type { CliOptions, DatabaseName } from '../src/config.js';
+import type { ObjectStore } from '../src/image-store.js';
 import type { ProcessedImage } from '../src/images.js';
 import type { Logger } from '../src/logger.js';
 import type { MappedPage } from '../src/mappers.js';
 import type { NotionReader, NotionSource } from '../src/notion/client.js';
 import { SchemaMismatchError } from '../src/notion/schema.js';
-import type { ObjectStore } from '../src/r2.js';
 import type {
   ContentStore,
   ExistingRow,
@@ -301,7 +301,7 @@ describe('runSync', () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
-  it('쓰이지 않게 된 R2 이미지는 유예 시간이 지난 뒤 지운다', async () => {
+  it('쓰이지 않게 된 이미지 파일은 유예 시간이 지난 뒤 지운다', async () => {
     const { store, objects, deps, advance } = setup();
     objects.files = new Set([
       'members/old-480.webp',

@@ -1,3 +1,4 @@
+import type { ObjectStore } from './image-store.js';
 import {
   type DownloadOptions,
   displaySize,
@@ -10,7 +11,6 @@ import {
 } from './images.js';
 import type { ImageDatabase } from './mappers.js';
 import type { FileRef } from './notion/properties.js';
-import type { ObjectStore } from './r2.js';
 
 /** 마지막으로 올리는 파일. 이게 있으면 세 파일이 모두 올라간 것이다. */
 const COMPLETION_WIDTH = IMAGE_WIDTHS[IMAGE_WIDTHS.length - 1]!;
@@ -21,12 +21,12 @@ export interface ImageOutcome {
   image: ProcessedImage;
   /** Notion에서 원본을 내려받았는지(캐시 적중이면 false). */
   downloaded: boolean;
-  /** R2에 새로 올렸는지. */
+  /** image_files에 새로 저장했는지. */
   uploaded: boolean;
 }
 
 /**
- * Notion 파일 → WebP 세 장 → R2.
+ * Notion 파일 → WebP 세 장 → Postgres image_files.
  * 원본 바이트의 SHA-256이 키라서 같은 사진은 한 번만 올라가고,
  * Notion 파일 주소(서명 쿼리 제외)로 캐시해서 글만 고친 페이지는 사진을 다시 내려받지 않는다.
  */

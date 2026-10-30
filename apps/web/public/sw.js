@@ -2,7 +2,7 @@
 // - 페이지(HTML): 캐시를 먼저 보여 주고 뒤에서 새 HTML로 바꿔 둔다(stale-while-revalidate). 주 메뉴 5개만 다룬다.
 // - /_astro/*: 파일 이름에 내용 해시가 붙어 바뀌지 않으므로 캐시에 있으면 네트워크에 묻지 않는다.
 // - /intro/* 사진·파비콘: 캐시를 먼저 쓰고 뒤에서 갱신한다.
-// - 다른 출처(R2 사진 등)와 /admin 은 건드리지 않는다. R2 사진은 1년 immutable HTTP 캐시로 충분하다.
+// - /img/* 사진, 다른 출처, /admin 은 건드리지 않는다. 사진은 1년 immutable HTTP 캐시로 충분하다.
 // 쿠키는 요청마다 서버로 실려 가고 4KB 남짓이라 자산 캐시로 쓸 수 없다. 그래서 Cache Storage를 쓴다.
 // 캐시 형식을 바꿀 때만 VERSION을 올린다(예전 캐시는 activate에서 지운다).
 const VERSION = 'v1';
