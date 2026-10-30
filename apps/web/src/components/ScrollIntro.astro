@@ -322,9 +322,11 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 0;
-    height: 22%;
-    background: linear-gradient(to bottom, transparent, var(--bg));
+    /* 무대 밖으로 4px 더 내려 둔다(바깥은 잘림). 배율이 125%처럼 소수 픽셀이면 막의 맨 아랫줄이 무대보다 한 줄 일찍
+       끝나 구름 마지막 줄이 밝은 실선으로 비쳤다. */
+    bottom: -4px;
+    height: calc(22% + 4px);
+    background: linear-gradient(to bottom, transparent, var(--bg) calc(100% - 4px));
     opacity: 0;
     pointer-events: none;
     will-change: opacity;
