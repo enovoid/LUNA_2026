@@ -1,4 +1,6 @@
 ---
+// 그리드에는 사진·이름·직군만 둔 타일, 누르면 소개를 담은 시트(<dialog>)가 열린다.
+// 테두리 없이 면 색과 빛으로만 구분한다. 다크 토큰(--surface-1 등)이 아직 없는 페이지에서도 보이도록 기존 토큰을 대체값으로 둔다.
 import { memberAnchor } from '../lib/content';
 import type { Member } from '../lib/data';
 import Picture from './Picture.astro';
@@ -7,76 +9,307 @@ interface Props {
   member: Member;
 }
 const { member } = Astro.props;
-const meta = [member.schoolGeneration, member.className].filter(Boolean).join(' · ');
+const anchor = memberAnchor(member);
+const sheetId = `${anchor}-sheet`;
+const titleId = `${anchor}-name`;
+const meta = [member.lunaGeneration, member.schoolGeneration, member.className]
+  .filter(Boolean)
+  .join(' · ');
+const initial = member.name.slice(0, 1);
 ---
 
-<article class="member card" id={memberAnchor(member)}>
-  <Picture image={member.image} alt={`${member.name} 프로필 사진`} ratio="1 / 1" sizes="(min-width: 768px) 248px, calc(50vw - 40px)" class="member-photo">
-    <span class="member-initial" aria-hidden="true">{member.name.slice(0, 1)}</span>
+<button
+  type="button"
+  class="member pressable"
+  id={anchor}
+  aria-haspopup="dialog"
+  aria-controls={sheetId}
+  data-member-open={sheetId}
+>
+  <Picture image={member.image} alt="" ratio="1 / 1" sizes="(min-width: 768px) 160px, calc(33vw - 24px)" class="member-photo">
+    <span class="member-initial" aria-hidden="true">{initial}</span>
   </Picture>
-  <div class="member-body">
-    <div class="member-head">
-      <h3>{member.name}</h3>
-      {member.position && <span class="chip">{member.position}</span>}
+  <span class="member-name">{member.name}</span>
+  {member.position && <span class="member-position">{member.position}</span>}
+</button>
+
+<dialog class="sheet" id={sheetId} aria-labelledby={titleId} data-member-sheet={anchor}>
+  <div class="sheet-body">
+    <span class="sheet-grabber" aria-hidden="true"></span>
+    <form method="dialog" class="sheet-close-form">
+      <button class="sheet-close pressable" aria-label="닫기">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M2 2l10 10M12 2L2 12"></path>
+        </svg>
+      </button>
+    </form>
+    <Picture image={member.image} alt={`${member.name} 프로필 사진`} ratio="1 / 1" sizes="200px" class="sheet-photo">
+      <span class="member-initial" aria-hidden="true">{initial}</span>
+    </Picture>
+    <div class="sheet-head">
+      <h3 id={titleId}>{member.name}</h3>
+      {member.position && <span class="chip chip-brand">{member.position}</span>}
     </div>
-    {meta && <p class="member-meta">{meta}</p>}
-    {member.description && <p class="member-desc">{member.description}</p>}
+    {meta && <p class="sheet-meta">{meta}</p>}
+    {member.description && <p class="sheet-desc">{member.description}</p>}
   </div>
-</article>
+</dialog>
 
 <style>
   .member {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 16px;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    padding: 12px 4px 14px;
+    border: 0;
+    border-radius: var(--radius-card);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
     scroll-margin-top: 96px;
-  }
-  .member:target {
-    box-shadow: 0 0 0 2px var(--color-brand-lavender);
+    -webkit-tap-highlight-color: transparent;
   }
   .member :global(.member-photo) {
-    border-radius: 20px;
+    width: 100%;
+    margin-bottom: 8px;
+    border-radius: 50%;
+    background: var(--surface-1, var(--color-card));
+    transition: transform var(--spring-snappy-dur) var(--spring-snappy);
+  }
+  /* 달빛 번짐: 사진 뒤에 미리 그려 둔 라벤더 빛을 opacity·scale로만 띄운다(레이아웃 변화 없음). */
+  .member {
+    position: relative;
+    isolation: isolate;
+  }
+  .member::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    z-index: -1;
+    width: 120%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(144 127 223 / 0.32), rgb(144 127 223 / 0) 100%);
+    opacity: 0;
+    transform: translate3d(-50%, -4%, 0) scale(0.8);
+    transition:
+      opacity var(--fade-dur) ease,
+      transform var(--spring-snappy-dur) var(--spring-snappy);
+    pointer-events: none;
+  }
+  .member:focus-visible::before,
+  .member:target::before {
+    opacity: 1;
+    transform: translate3d(-50%, -4%, 0);
+  }
+  @media (hover: hover) {
+    .member:hover::before {
+      opacity: 1;
+      transform: translate3d(-50%, -4%, 0);
+    }
+    .member:hover :global(.member-photo) {
+      transform: scale(1.03);
+    }
+  }
+  .member:focus-visible {
+    outline: 2px solid var(--accent, var(--color-accent));
+    outline-offset: 2px;
   }
   .member-initial {
-    font-size: 40px;
+    font-size: 32px;
     font-weight: 700;
-    color: var(--color-accent);
-    opacity: 0.55;
+    color: var(--accent, var(--color-accent));
   }
-  .member-body {
+  .member-name {
+    max-width: 100%;
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .member-position {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--text-2, var(--color-label-2));
+  }
+
+  /* 시트: 모바일은 아래에서 올라오는 시트, 넓은 화면은 가운데 폼 시트(HIG). */
+  .sheet {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    max-width: none;
+    max-height: 88dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--sheet-top-radius) var(--sheet-top-radius) 0 0;
+    background: var(--surface-1, var(--color-card));
+    color: var(--text, var(--color-label));
+    overflow: auto;
+    overscroll-behavior: contain;
+    opacity: 0;
+    transition:
+      opacity var(--fade-dur) ease,
+      overlay var(--spring-smooth-dur) allow-discrete,
+      display var(--spring-smooth-dur) allow-discrete;
+  }
+  .sheet[open] {
+    opacity: 1;
+  }
+  @starting-style {
+    .sheet[open] {
+      opacity: 0;
+    }
+  }
+  .sheet::backdrop {
+    background: rgb(14 13 20 / 0.6);
+    opacity: 0;
+    transition:
+      opacity var(--fade-dur) ease,
+      overlay var(--spring-smooth-dur) allow-discrete,
+      display var(--spring-smooth-dur) allow-discrete;
+  }
+  .sheet[open]::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    .sheet[open]::backdrop {
+      opacity: 0;
+    }
+  }
+  /* 움직임은 transform만. 동작 줄이기에서는 위 크로스페이드만 남는다. */
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet {
+      opacity: 1;
+      transform: translate3d(0, 100%, 0);
+      transition:
+        transform var(--spring-smooth-dur) var(--spring-smooth),
+        overlay var(--spring-smooth-dur) allow-discrete,
+        display var(--spring-smooth-dur) allow-discrete;
+    }
+    .sheet[open] {
+      transform: none;
+    }
+    @starting-style {
+      .sheet[open] {
+        opacity: 1;
+        transform: translate3d(0, 100%, 0);
+      }
+    }
+  }
+  .sheet-body {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px calc(32px + env(safe-area-inset-bottom));
+    text-align: center;
   }
-  .member-head {
+  .sheet-grabber {
+    width: 36px;
+    height: 5px;
+    margin-bottom: 12px;
+    border-radius: 3px;
+    background: var(--color-fill-3);
+  }
+  .sheet-close-form {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    margin: 0;
+  }
+  .sheet-close {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.12);
+    color: var(--text-2, var(--color-label-2));
+    cursor: pointer;
+  }
+  .sheet-body :global(.sheet-photo) {
+    width: min(200px, 56vw);
+    margin-bottom: 8px;
+    border-radius: 50%;
+    background: var(--surface-2, var(--color-card-2));
+  }
+  .sheet-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px 8px;
+    justify-content: center;
+    gap: 6px 10px;
   }
-  h3 {
+  .sheet-head h3 {
     margin: 0;
-    font-size: 20px;
-    line-height: 25px;
-    font-weight: 600;
+    font-size: 28px;
+    line-height: 34px;
+    font-weight: 700;
   }
-  .member-meta {
+  .sheet-meta {
     margin: 0;
     font-size: 15px;
     line-height: 20px;
-    color: var(--color-label-2);
+    color: var(--text-2, var(--color-label-2));
   }
-  .member-desc {
-    margin: 4px 0 0;
-    font-size: 15px;
-    line-height: 20px;
+  .sheet-desc {
+    max-width: 36em;
+    margin: 12px 0 0;
+    font-size: 17px;
+    line-height: 26px;
+    text-align: left;
+    white-space: pre-line;
   }
+  .chip-brand {
+    background: var(--accent-soft, var(--color-lavender-tint));
+    color: var(--accent, var(--color-accent));
+  }
+
   @media (min-width: 768px) {
-    .member {
-      padding: 20px;
+    .sheet {
+      inset: 0;
+      width: min(480px, calc(100% - 40px));
+      max-height: 85dvh;
+      margin: auto;
+      border-radius: var(--radius-glass-medium);
+    }
+    .sheet-grabber {
+      visibility: hidden;
+    }
+    .sheet-body {
+      padding-bottom: 32px;
+    }
+  }
+  @media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+    .sheet {
+      opacity: 0;
+      transform: translate3d(0, 24px, 0) scale(0.96);
+      transition:
+        opacity var(--fade-dur) ease,
+        transform var(--spring-smooth-dur) var(--spring-smooth),
+        overlay var(--spring-smooth-dur) allow-discrete,
+        display var(--spring-smooth-dur) allow-discrete;
+    }
+    .sheet[open] {
+      opacity: 1;
+      transform: none;
+    }
+    @starting-style {
+      .sheet[open] {
+        opacity: 0;
+        transform: translate3d(0, 24px, 0) scale(0.96);
+      }
     }
   }
 </style>
