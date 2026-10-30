@@ -1,5 +1,5 @@
 ---
-// R2 사진 + 자리표시. 상자는 aspect-ratio로 크기를 먼저 잡아 두므로, 사진이 늦게 오거나 실패해도 레이아웃이 흔들리지 않는다.
+// 사진(/img/, 빌드 때 DB에서 꺼낸 정적 파일) + 자리표시. 상자는 aspect-ratio로 크기를 먼저 잡아 두므로, 사진이 늦게 오거나 실패해도 레이아웃이 흔들리지 않는다.
 // 사진이 오는 동안은 같은 상자에 스켈레톤 빛이 지나간다(.is-loading → NavPerf.astro).
 import type { ImageRef } from '../lib/data';
 import { imageSources } from '../lib/image';

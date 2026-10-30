@@ -1,6 +1,6 @@
 import type { ContactSettings, RecruitSettings } from '@luna/db/settings';
 
-/** R2에 올라간 이미지. 실제 파일은 `${R2_PUBLIC_URL}/${key}-{480|960|1600}.webp` */
+/** 동기화가 만든 이미지. 실제 파일은 `/img/${key}-{480|960|1600}.webp`(빌드가 DB image_files에서 꺼냄) */
 export interface ImageRef {
   key: string;
   width: number;

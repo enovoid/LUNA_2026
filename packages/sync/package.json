@@ -9,7 +9,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1160.0",
     "@luna/db": "workspace:*",
     "@notionhq/client": "^5.30.0",
     "drizzle-orm": "^0.45.4",

@@ -14,7 +14,6 @@ pnpm --filter @luna/web build && pnpm --filter @luna/web preview
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | `LUNA_DATA_SOURCE` | `db` 또는 `mock`. 비우면 `DATABASE_URL`이 있을 때 db, 없을 때 mock. CI에서 둘 다 없으면 빌드를 멈춘다(목업이 배포되는 사고 방지). |
 | `DATABASE_URL`     | 빌드 시 읽을 Postgres                                                                                                             |
-| `R2_PUBLIC_URL`    | 사진 주소의 앞부분. 없으면 사진 대신 자리표시를 그린다                                                                            |
 | `SITE_URL`         | canonical·sitemap·OG의 절대 주소. TODO: 도메인 확정                                                                               |
 
 목업으로 빌드한 화면은 푸터에 빨간 글씨로 "목업 데이터로 빌드한 화면"이 붙는다.
@@ -27,7 +26,8 @@ src/
                          (모집 정보·연락처는 관리자 페이지 → DB site_settings → loadSiteData().settings)
   lib/data/              데이터 진입점(db.ts / mock.ts), 행 검증
   lib/content.ts         정렬·묶음·통계·이름 연결
-  lib/image.ts           R2 srcset(480/960/1600)
+  lib/image.ts           /img/ srcset(480/960/1600)
+  pages/img/[...file].ts DB(image_files)의 사진을 dist/img/ 정적 파일로 내보냄
   components/            Header, TabBar, Footer, ScrollIntro, 카드, Picture, EmptyState, Filter, NavPerf
   scripts/               intro.ts(GSAP), reveal.ts, header-bar.ts, segmented.ts(필터), nav-pending.ts(이동 스켈레톤)
   styles/                tokens.json(디자인 시스템 원본) → tokens.css(생성), global.css(Tailwind v4 @theme)
@@ -115,13 +115,13 @@ public/_headers          Cloudflare 캐시 헤더
 
 ### 페이지 이동·재방문 캐시
 
-| 장치                                     | 하는 일                                                                                                                                                                                  |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Speculation Rules (`NavPerf.astro`)      | 링크에 마우스를 올리거나(약 200ms) 누르기 시작하면 다음 페이지를 미리 그려 둔다. 주 메뉴 페이지 HTML은 쉬는 시간에 미리 받는다. 지원하지 않는 브라우저는 무시(JS 0바이트)                |
-| 이동 스켈레톤 (`scripts/nav-pending.ts`) | 누르고 120ms 안에 새 페이지가 안 오면 탭 선택을 먼저 옮기고 도착할 페이지 모양(격자·비율 같음)의 스켈레톤을 덮는다. 새 페이지가 오면 View Transition 크로스페이드로 바뀐다               |
-| 사진 스켈레톤 (`Picture.astro`)          | 사진이 오는 동안 같은 상자에 빛이 지나간다. 동작 줄이기면 멈춘 회색 상자                                                                                                                 |
-| 서비스 워커 (`public/sw.js`)             | 처음 방문 때 주 메뉴 5개 페이지와 그 JS·CSS를 Cache Storage에 받아 둔다. 다음부터 페이지는 캐시를 먼저 보여 주고 뒤에서 새 HTML로 바꿔 둔다. `/admin`·다른 출처(R2 사진)는 건드리지 않음 |
-| HTTP 캐시 (`public/_headers`)            | `/_astro/*`(해시 파일) 1년 immutable, 인트로 사진 1주 + SWR, `sw.js` no-cache. HTML은 Cloudflare 기본(매번 ETag 확인)                                                                    |
+| 장치                                     | 하는 일                                                                                                                                                                                                                      |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Speculation Rules (`NavPerf.astro`)      | 링크에 마우스를 올리거나(약 200ms) 누르기 시작하면 다음 페이지를 미리 그려 둔다. 주 메뉴 페이지 HTML은 쉬는 시간에 미리 받는다. 지원하지 않는 브라우저는 무시(JS 0바이트)                                                    |
+| 이동 스켈레톤 (`scripts/nav-pending.ts`) | 누르고 120ms 안에 새 페이지가 안 오면 탭 선택을 먼저 옮기고 도착할 페이지 모양(격자·비율 같음)의 스켈레톤을 덮는다. 새 페이지가 오면 View Transition 크로스페이드로 바뀐다                                                   |
+| 사진 스켈레톤 (`Picture.astro`)          | 사진이 오는 동안 같은 상자에 빛이 지나간다. 동작 줄이기면 멈춘 회색 상자                                                                                                                                                     |
+| 서비스 워커 (`public/sw.js`)             | 처음 방문 때 주 메뉴 5개 페이지와 그 JS·CSS를 Cache Storage에 받아 둔다. 다음부터 페이지는 캐시를 먼저 보여 주고 뒤에서 새 HTML로 바꿔 둔다. `/admin`·`/img/` 사진·다른 출처는 건드리지 않음(사진은 1년 immutable HTTP 캐시) |
+| HTTP 캐시 (`public/_headers`)            | `/_astro/*`(해시 파일) 1년 immutable, 인트로 사진 1주 + SWR, `sw.js` no-cache. HTML은 Cloudflare 기본(매번 ETag 확인)                                                                                                        |
 
 - 쿠키를 쓰지 않는 이유: 쿠키는 요청마다 서버로 실려 가고 한 개 4KB 남짓이라 페이지·자산을 담을 수 없다. 자산은 HTTP 캐시와 Cache Storage가 맡는다.
 - 배포 직후 첫 방문에는 예전 HTML이 한 번 보일 수 있다(뒤에서 갱신되어 다음 이동부터 새 내용). 캐시한 HTML이 쓰는 JS·CSS는 같이 받아 두므로 예전 HTML도 깨지지 않는다.

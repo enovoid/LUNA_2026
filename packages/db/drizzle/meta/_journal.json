@@ -15,6 +15,13 @@
       "when": 1793360715974,
       "tag": "0001_site_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793364647018,
+      "tag": "0002_image_files",
+      "breakpoints": true
     }
   ]
 }

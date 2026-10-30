@@ -1,6 +1,7 @@
 import { awards, createDb, type Db, faqs, members, projects, syncState } from '@luna/db';
 import { and, eq, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm';
 import type { DatabaseName } from './config.js';
+import { PostgresImageStore } from './image-store.js';
 import type { ProcessedImage } from './images.js';
 import type { FieldsByDatabase, MappedPage } from './mappers.js';
 import type {
@@ -27,9 +28,12 @@ function imageColumns(image: ProcessedImage | null) {
 
 export class PostgresStore implements ContentStore {
   readonly #db: Db;
+  /** 같은 연결로 WebP 파일(image_files)을 읽고 쓴다. */
+  readonly images: PostgresImageStore;
 
   constructor(url: string) {
     this.#db = createDb(url);
+    this.images = new PostgresImageStore(this.#db);
   }
 
   async getExisting(database: DatabaseName): Promise<Map<string, ExistingRow>> {

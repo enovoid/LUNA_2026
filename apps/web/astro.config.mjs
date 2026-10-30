@@ -22,12 +22,6 @@ export default defineConfig({
         values: ['db', 'mock'],
         optional: true,
       }),
-      R2_PUBLIC_URL: envField.string({
-        context: 'server',
-        access: 'public',
-        url: true,
-        optional: true,
-      }),
       CI: envField.boolean({ context: 'server', access: 'public', default: false }),
     },
   },

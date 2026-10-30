@@ -4,7 +4,6 @@ import { createDispatcher } from './dispatch.js';
 import { createConsoleLogger, errorMessage } from './logger.js';
 import { NotionApi } from './notion/client.js';
 import { SchemaMismatchError } from './notion/schema.js';
-import { R2Store } from './r2.js';
 import { type ContentStore, emptyStore, readOnly } from './store.js';
 import { runSync, verifySchemas } from './sync.js';
 
@@ -20,6 +19,7 @@ const RUN_LOCK_TTL_MS = 30 * 60_000;
 async function main(): Promise<number> {
   const logger = createConsoleLogger();
   let store: ContentStore | undefined;
+  let db: PostgresStore | undefined;
   let lock: { db: PostgresStore; lockedAt: Date } | undefined;
   try {
     const options = parseArgs(process.argv.slice(2));
@@ -33,7 +33,7 @@ async function main(): Promise<number> {
     }
 
     if (config.databaseUrl) {
-      const db = new PostgresStore(config.databaseUrl);
+      db = new PostgresStore(config.databaseUrl);
       store = options.dryRun ? readOnly(db) : db;
       if (!options.dryRun) {
         // SYNC_TRIGGER: 누가 시작했는지(기본 cron, 관리자 페이지의 수동 실행은 admin). 관리자 페이지에 보인다.
@@ -58,7 +58,7 @@ async function main(): Promise<number> {
     const summary = await runSync(options, {
       notion,
       store,
-      objects: options.dryRun || !config.r2 ? undefined : new R2Store(config.r2),
+      objects: options.dryRun ? undefined : db?.images,
       dispatch: options.dryRun || !config.dispatch ? undefined : createDispatcher(config.dispatch),
       logger,
       databaseIds: config.notionDatabaseIds,

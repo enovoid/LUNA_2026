@@ -35,12 +35,12 @@ export interface SyncStateWrite {
 
 /**
  * sync_state에는 Notion DB 이름 말고도 작업 내부 상태를 같은 모양으로 둔다.
- * - `_r2_orphans`: 쓰이지 않게 된 이미지와 처음 발견한 시각(유예 뒤 삭제)
+ * - `_image_orphans`: 쓰이지 않게 된 이미지와 처음 발견한 시각(유예 뒤 삭제)
  * - `_dispatch`: 빌드 호출이 실패해 다음 실행에서 다시 불러야 하는지
  * - `_image_cache`: Notion 파일 주소 → 이미 올린 image_key와 크기(같은 사진을 다시 내려받지 않게)
  * - `_running`: 지금 실행 중인 동기화(겹침 방지 잠금). `db-store.ts`의 acquireRunLock 참고
  */
-export type StateKey = DatabaseName | '_r2_orphans' | '_dispatch' | '_image_cache' | '_running';
+export type StateKey = DatabaseName | '_image_orphans' | '_dispatch' | '_image_cache' | '_running';
 
 export interface ContentStore {
   getExisting(database: DatabaseName): Promise<Map<string, ExistingRow>>;
