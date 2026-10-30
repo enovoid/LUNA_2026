@@ -41,11 +41,23 @@ export function applyFilterWithTransition(param: string, value: string) {
   named.forEach((el, i) => {
     el.style.viewTransitionName = `filter-item-${i}`;
   });
+  // 이름 붙은 카드는 루트 스냅숏 위에 그려진다. 헤더 유리 막대는 루트에 속해 있어 그대로 두면 전환 동안
+  // 카드가 막대를 덮어 헤더가 사라졌다 나타나 보인다. 전환 동안만 헤더도 이름을 붙여 카드 위에 둔다.
+  // 이름이 붙으면 막대의 흐림이 뒤를 못 보므로(backdrop root) 그동안은 막대를 불투명하게 칠한다(Header.astro).
+  const header = document.querySelector<HTMLElement>('[data-site-header]');
+  if (header && named.length > 0) {
+    header.style.viewTransitionName = 'site-header';
+    header.dataset.solid = '';
+  }
   const transition = document.startViewTransition(() => {
     applyFilter(param, value);
   });
   transition.finished.finally(() => {
     for (const el of named) el.style.viewTransitionName = '';
+    if (header) {
+      header.style.viewTransitionName = '';
+      delete header.dataset.solid;
+    }
   });
   return shown;
 }

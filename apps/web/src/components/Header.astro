@@ -1,6 +1,6 @@
 ---
 // 상단 내비. 홈에서는 인트로 위에 투명하게 겹치고(fixed), 다른 페이지에서는 유리 막대(sticky)다.
-// 인트로·소개처럼 배경이 꽉 찬 구역(data-header-clear) 위에서는 막대 없이 투명하고, 그 밖에서는 유리 막대가 깔린다 → scripts/header-bar.ts
+// 인트로처럼 배경이 꽉 찬 구역(data-header-clear) 위에서는 막대 없이 투명하고, 그 밖에서는 유리 막대가 깔린다 → scripts/header-bar.ts
 import { isRecruiting } from '@luna/db/settings';
 import { type NavKey, nav } from '../content/site';
 import { loadSiteData } from '../lib/data';
@@ -75,6 +75,10 @@ const { recruit } = (await loadSiteData()).settings;
   }
   .site-header[data-bar="off"]::before {
     opacity: 0;
+  }
+  /* 필터 전환 동안(lib/filter-dom.ts): 흐림 대신 바탕색으로 칠해 뒤 카드가 비치지 않게 한다 */
+  .site-header[data-solid]::before {
+    background: var(--bg);
   }
   /* 페이지 이동 때 내비 내용은 제자리에 둔다. view-transition-name을 가진 요소는 backdrop root가 되어
      그 안쪽의 흐림은 바깥(본문)을 못 본다(Chromium). 그래서 감싸는 상자가 아니라 로고·탭 알약·버튼에 각각 단다.
