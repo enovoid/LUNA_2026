@@ -62,11 +62,9 @@ async function start(root: HTMLElement) {
   const city = q('city');
   const ring = q('ring');
   const dark = q('dark');
-  const curtain = q('curtain');
   const cloudTop = q('cloudTop');
   const cloudBottom = q('cloudBottom');
   const fade = q('fade');
-  const content = q('content');
   const logo = q('logo');
   const logoBox = root.querySelector<HTMLElement>('[data-measure="logo"]');
   const wordmark = q('wordmark');
@@ -80,11 +78,9 @@ async function start(root: HTMLElement) {
     !city ||
     !ring ||
     !dark ||
-    !curtain ||
     !cloudTop ||
     !cloudBottom ||
     !fade ||
-    !content ||
     !logo ||
     !logoBox ||
     !wordmark ||
@@ -120,7 +116,7 @@ async function start(root: HTMLElement) {
     lock: 0,
     title: 0,
     cloud: 0,
-    curtain: 0,
+    fade: 0,
     nav: 0,
   };
 
@@ -179,10 +175,7 @@ async function start(root: HTMLElement) {
     const open = 1 - s.cloud;
     cloudTop.style.transform = `translate3d(${(8 * open).toFixed(2)}%, ${(-102 * open).toFixed(2)}%, 0)`;
     cloudBottom.style.transform = `translate3d(${(-50 - 6 * open).toFixed(2)}%, ${(102 * open).toFixed(2)}%, 0)`;
-    curtain.style.opacity = s.curtain.toFixed(3);
-    fade.style.opacity = s.curtain.toFixed(3);
-    // 구름과 막이 다 덮은 뒤에는 묶음을 그리지 않는다.
-    content.style.visibility = s.curtain < 1 ? '' : 'hidden';
+    fade.style.opacity = s.fade.toFixed(3);
 
     hint.style.opacity = (1 - s.hint).toFixed(3);
     if (navLogo) navLogo.style.opacity = s.nav.toFixed(3);
@@ -225,21 +218,22 @@ async function start(root: HTMLElement) {
       from,
     );
 
-  span('hint', 0, 0.04);
-  span('z', 0.04, 0.32);
-  span('zc', 0.04, 0.28);
-  span('k', 0.04, 0.29, smooth);
-  span('cityOut', 0.15, 0.28, smooth);
-  span('glow', 0.18, 0.32, smooth);
-  span('ring', 0.18, 0.34, smooth);
-  span('dim', 0.32, 0.4, smooth); // 사진이 먼저 어두워지고
-  span('morph', 0.34, 0.42, smooth); // 그 자리에서 로고가 떠오른다
-  span('settle', 0.42, 0.5, smooth);
-  span('lock', 0.5, 0.58, snap);
-  span('title', 0.57, 0.64, smooth);
-  span('cloud', 0.72, 0.9, smooth);
-  span('curtain', 0.8, 0.92, smooth);
-  span('nav', 0.92, 1);
+  // 구름이 로고를 덮는 순간(p=1)에 고정이 풀리고 무대가 그대로 위로 올라간다(사용자 요청: 가려지면 바로 스크롤).
+  span('hint', 0, 0.045);
+  span('z', 0.045, 0.364);
+  span('zc', 0.045, 0.318);
+  span('k', 0.045, 0.33, smooth);
+  span('cityOut', 0.17, 0.318, smooth);
+  span('glow', 0.205, 0.364, smooth);
+  span('ring', 0.205, 0.386, smooth);
+  span('dim', 0.364, 0.455, smooth); // 사진이 먼저 어두워지고
+  span('morph', 0.386, 0.477, smooth); // 그 자리에서 로고가 떠오른다
+  span('settle', 0.477, 0.568, smooth);
+  span('lock', 0.568, 0.659, snap);
+  span('title', 0.648, 0.727, smooth);
+  span('cloud', 0.818, 1, smooth);
+  span('fade', 0.864, 1, smooth);
+  span('nav', 0.909, 1);
 
   measure();
   render();
@@ -271,11 +265,9 @@ async function start(root: HTMLElement) {
       city,
       ring,
       dark,
-      curtain,
       cloudTop,
       cloudBottom,
       fade,
-      content,
       logo,
       wordmark,
       title,
