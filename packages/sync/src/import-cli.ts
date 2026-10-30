@@ -157,11 +157,14 @@ async function importTable(
     }
   }
 
-  // 지난 가져오기에만 있던 행(이번 내보내기에서 빠짐)을 지운다. 동기화가 쓴 행은 그대로.
+  // 지난 가져오기에만 있던 행(이번 내보내기에서 빠짐)을 지운다. 동기화가 쓴 행과 관리자 페이지에서 만든 행(admin:)은 그대로.
   const keep = new Set(ids);
   const stale = [...existing]
     .filter(
-      ([id, row]) => !keep.has(id) && row.notionLastEditedAt.getTime() === IMPORTED_AT.getTime(),
+      ([id, row]) =>
+        !keep.has(id) &&
+        !id.startsWith('admin:') &&
+        row.notionLastEditedAt.getTime() === IMPORTED_AT.getTime(),
     )
     .map(([id]) => id);
   if (stale.length > 0 && !dryRun && db && counts.failed === 0) {
