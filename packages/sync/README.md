@@ -29,8 +29,9 @@ DATABASE_URL='<Railway Postgres의 공개 URL>' pnpm import:notion ~/Downloads/E
 ```
 
 - zip(안에 든 `Part-N.zip` 포함)이나 압축을 푼 폴더를 여러 개 넘길 수 있다. CSV 머리글로 members·awards·projects·faqs를 알아내고, `X_all.csv`가 있으면 그것만 쓴다. 내보내기에 없는 DB는 건드리지 않는다.
-- 다시 실행하면 같은 행을 덮어쓴다. 지난 가져오기에만 있던 행은 지운다.
+- 다시 실행하면 같은 행을 덮어쓴다. 지난 가져오기에만 있던 행은 지운다(관리자 페이지에서 만든 `admin:` 행은 제외).
 - 끝나면 관리자 페이지에서 **사이트 만들기**를 누른다.
+- 컴퓨터가 없으면 관리자 페이지 홈의 **Notion 내보내기 가져오기**에서 zip(200MB까지)을 올린다. 서버가 `import:start`로 같은 가져오기를 실행하고 사이트를 다시 만든다. zip을 메모리에 풀어서 zip 크기의 2~3배 메모리를 쓴다.
 
 나중에 integration을 공유해도 동기화와 겹치지 않는다.
 
