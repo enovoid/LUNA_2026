@@ -47,7 +47,10 @@ const config = JSON.stringify({
 
 // 사진이 없을 때 쓰는 임시 도시 실루엣(같은 좌표계). 빌드마다 같은 모양이 나오도록 고정 난수.
 let seed = 7;
-const rand = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+const rand = () => {
+  seed = (seed * 9301 + 49297) % 233280;
+  return seed / 233280;
+};
 const buildings = Array.from({ length: 40 }, (_, i) => ({
   x: i * 2.5,
   w: 2.6,
