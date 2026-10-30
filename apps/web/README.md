@@ -54,7 +54,7 @@ public/intro/            인트로 사진 4장 + 달 고해상도 2장
 
 - 움직임은 transform·opacity만. 레이아웃 값(달 크기, 로고 위치)은 크기가 바뀔 때만 잰다.
 - `prefers-reduced-motion`, JS 꺼짐, GSAP 로드 실패 → 100svh 정적 최종 화면. 움직임 줄이기면 GSAP을 아예 받지 않는다.
-- 사진: `site.ts`의 `introScene.usePhotos`. 끄면 같은 좌표의 CSS 임시 하늘·달을 그린다.
+- 사진: Unsplash(`public/intro/README.md`). `site.ts`의 `introScene.usePhotos`를 끄면 같은 좌표의 CSS 임시 하늘·달을 그린다.
 - 달 고해상도: 사진 전체를 키우면 용량이 커지므로 달 부분(400×400)만 잘라 Real-ESRGAN x4plus(BSD-3)로 4배 키운 뒤 1200px WebP로 저장해 하늘 레이어의 달 위에 겹쳤다. 하늘과 함께 커지므로 확대해도 선명하다.
 
 ## 예외 처리
@@ -101,7 +101,6 @@ public/intro/            인트로 사진 4장 + 달 고해상도 2장
 
 - 창립 연도 확인(`site.ts` `foundedYear`, 지금 2018)
 - 모집 기수·기간·지원 링크, 연락처·SNS
-- 인트로 사진 라이선스 확인과 출처 표기(`photoCredit`)
 - 도메인(`SITE_URL`), Cloudflare 배포 방식 확정
 - 다크 모드
 - 멤버·프로젝트·수상 페이지 JS를 50KB 아래로 줄일지 결정(React → Preact 호환층 등)
