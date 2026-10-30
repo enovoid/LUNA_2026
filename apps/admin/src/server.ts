@@ -7,9 +7,12 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handle } from './app.js';
 import { createAuth, parseEmails } from './auth.js';
+import { MAX_UPLOAD_BYTES } from './images.js';
 import { createJobs, pnpmRunner } from './jobs.js';
+import { createRateLimiter } from './rate-limit.js';
 import { createSite } from './site.js';
 import { type AdminStore, createStore } from './store.js';
+import { MAX_IMPORT_BYTES } from './views.js';
 
 const env = process.env;
 const log = (message: string) => console.log(`[server] ${message}`);
@@ -44,20 +47,31 @@ const deps = {
   },
   site,
   jobs,
+  limiter: createRateLimiter(),
+  importDir: join(workDir, 'imports'),
   log,
 };
 
 const server = createServer(async (req, res) => {
   try {
-    const response = await handle(await toRequest(req), deps);
+    const response = await handle(toRequest(req), deps);
     const headers: [string, string][] = [];
     response.headers.forEach((value, key) => {
       if (key !== 'set-cookie') headers.push([key, value]);
     });
     for (const cookie of response.headers.getSetCookie()) headers.push(['set-cookie', cookie]);
     res.writeHead(response.status, headers);
-    res.end(Buffer.from(await response.arrayBuffer()));
+    // 본문을 다 읽지 않고 답한 경우(로그인 안 됨, 상한 초과): 남은 업로드를 받지 않고 연결을 닫는다.
+    res.end(Buffer.from(await response.arrayBuffer()), () => {
+      if (!req.complete) req.destroy();
+    });
   } catch (error) {
+    if (error instanceof BodyTooLarge) {
+      if (!res.headersSent)
+        res.writeHead(413, { 'Content-Type': 'text/plain; charset=utf-8', Connection: 'close' });
+      res.end('요청이 너무 커요.');
+      return;
+    }
     console.error('[server] 요청 처리 실패', error);
     if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('서버 오류가 났어요. 잠시 뒤 다시 시도해 주세요.');
@@ -108,8 +122,21 @@ function msUntilSeoulMidnight(now: Date): number {
   return day - ((now.getTime() + KST) % day);
 }
 
-/** Railway 앞단이 HTTPS를 처리하고 X-Forwarded-Proto를 붙인다. 폼 본문은 작아서 통째로 읽는다(64KB 상한). */
-async function toRequest(req: IncomingMessage): Promise<Request> {
+/** Notion 내보내기 zip은 200MB, 사진을 받는 주소는 20MB, 나머지 폼은 64KB까지 받는다. */
+function bodyLimit(pathname: string): number {
+  if (pathname === '/admin/import') return MAX_IMPORT_BYTES + 1024 * 1024;
+  return pathname.startsWith('/admin/upload/') || pathname.startsWith('/admin/content/')
+    ? MAX_UPLOAD_BYTES + 1024 * 1024
+    : 64 * 1024;
+}
+
+class BodyTooLarge extends Error {}
+
+/**
+ * Node 요청을 Request로 바꾼다. Railway 앞단이 HTTPS를 처리하고 X-Forwarded-Proto를 붙인다.
+ * 본문은 미리 읽지 않고 흘려보낸다: 로그인 확인이 끝난 뒤에야 읽고, 상한을 넘으면 그 자리에서 끊는다.
+ */
+function toRequest(req: IncomingMessage): Request {
   const proto = String(req.headers['x-forwarded-proto'] ?? 'http')
     .split(',')[0]
     ?.trim();
@@ -119,16 +146,28 @@ async function toRequest(req: IncomingMessage): Promise<Request> {
     if (Array.isArray(value)) for (const v of value) headers.append(key, v);
     else if (value !== undefined) headers.set(key, value);
   }
-  let body: Buffer | undefined;
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    for await (const chunk of req) {
-      size += (chunk as Buffer).length;
-      if (size > 64 * 1024) throw new Error('요청 본문이 너무 큽니다.');
-      chunks.push(chunk as Buffer);
-    }
-    body = Buffer.concat(chunks);
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    return new Request(url, { method: req.method, headers });
   }
-  return new Request(url, { method: req.method, headers, body });
+  const limit = bodyLimit(url.pathname);
+  if (Number(req.headers['content-length'] ?? 0) > limit) throw new BodyTooLarge();
+  const chunks = req[Symbol.asyncIterator]();
+  let size = 0;
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { value, done } = (await chunks.next()) as IteratorResult<Buffer>;
+      if (done) {
+        controller.close();
+        return;
+      }
+      size += value.length;
+      if (size > limit) {
+        // 응답(413)은 보내고, 남은 본문은 응답을 다 보낸 뒤 연결을 끊어 버린다.
+        controller.error(new BodyTooLarge());
+        return;
+      }
+      controller.enqueue(new Uint8Array(value));
+    },
+  });
+  return new Request(url, { method: req.method, headers, body, duplex: 'half' } as RequestInit);
 }

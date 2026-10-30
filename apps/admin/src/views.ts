@@ -1,4 +1,7 @@
-// 관리자 화면. 서버에서 HTML을 다 그리고, 버튼은 일반 폼 전송이라 브라우저 JS가 필요 없다.
+// 관리자 화면. 서버에서 HTML을 다 그리고, 버튼은 일반 폼 전송이라 JS 없이도 동작한다.
+// admin.js는 사진 미리 올리기·진행률, 사이트 반영 상태 표시 같은 편의 기능만 더한다.
+
+import { isAdminCreated } from '@luna/db/content';
 import {
   RECRUIT_STATUSES,
   type SettingsByKey,
@@ -6,9 +9,16 @@ import {
   settingsFields,
   settingsLabel,
 } from '@luna/db/settings';
-import { type Html, html, raw } from './html.js';
+import { assetUrl } from './assets.js';
+import { CONTENT, CONTENT_TABLES, type ContentTable, type FieldDef, formValue } from './content.js';
+import { type Html, html } from './html.js';
+import { MAX_UPLOAD_BYTES } from './images.js';
+
+/** 가져오기는 zip을 메모리에 풀므로(약 3배) 서버 메모리에 맞춰 둔다. */
+export const MAX_IMPORT_BYTES = 200 * 1024 * 1024;
+
 import type { JobRun, JobsStatus } from './jobs.js';
-import type { StoredAdmins, StoredSetting, SyncStateRow } from './store.js';
+import type { ContentRow, StoredAdmins, StoredSetting, SyncStateRow } from './store.js';
 
 export type Loaded<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -26,6 +36,8 @@ export interface PageModel {
   settings: Loaded<{ [K in SettingsKey]?: StoredSetting<K> }>;
   /** 멤버 DB에 있는 루나 기수 번호. 모집 기수 선택지를 만든다. */
   generations: Loaded<number[]>;
+  /** 테이블마다 항목 수 */
+  counts: Loaded<Record<ContentTable, number>>;
   /** 검사에 실패한 폼: 입력한 값을 그대로 다시 보여 준다. */
   rejected?: { key: SettingsKey; input: Record<string, string>; errors: string[] };
   now: Date;
@@ -47,9 +59,20 @@ export const NOTICES = {
   },
   'admin-removed': {
     tone: 'ok',
-    text: '운영진에서 뺐어요. 이미 로그인한 세션은 최대 12시간 뒤에 끝나요.',
+    text: '운영진에서 뺐어요. 그 계정은 바로 관리자 페이지를 쓸 수 없어요.',
   },
   'admin-invalid': { tone: 'error', text: '이메일 주소 형식이 올바르지 않아요.' },
+  'content-saved': { tone: 'ok', text: '저장했어요. 사이트에 반영하는 중이에요(1~2분).' },
+  'content-deleted': { tone: 'ok', text: '지웠어요. 사이트에서도 곧 빠져요.' },
+  'content-missing': { tone: 'warn', text: '이미 지워졌거나 없는 항목이에요.' },
+  'import-started': {
+    tone: 'ok',
+    text: '올렸어요. 뒤에서 가져오고 있고, 끝나면 사이트도 다시 만들어요. 아래 "최근 작업"에서 결과를 볼 수 있어요.',
+  },
+  'import-failed': {
+    tone: 'error',
+    text: '파일을 받지 못했어요. Notion에서 "Markdown & CSV"로 내보낸 200MB 이하 zip인지 확인해 주세요.',
+  },
   'db-failed': {
     tone: 'error',
     text: '데이터베이스에 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.',
@@ -88,16 +111,104 @@ const PLACEHOLDERS: Record<string, string> = {
   github: 'https://github.com/…',
 };
 
-function documentHead(): Html {
+function documentHead(title = 'LUNA 관리자'): Html {
   return html`<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>LUNA 관리자</title>
-<style>${raw(STYLE)}</style>
+<meta name="referrer" content="same-origin">
+<title>${title}</title>
+<link rel="stylesheet" href="${assetUrl('admin.css')}">
+<script src="${assetUrl('admin.js')}" defer></script>
 </head>`;
+}
+
+export type Section = 'home' | ContentTable;
+
+export interface Frame {
+  viewer: { email: string; name: string };
+  status: JobState;
+}
+
+/** 모든 관리자 화면의 머리글(메뉴, 사이트 반영 상태, 로그인한 사람). */
+export function layout(frame: Frame, active: Section, title: string, body: Html): string {
+  const tabs: [Section, string, string][] = [
+    ['home', '홈', '/admin/'],
+    ...CONTENT_TABLES.map((t): [Section, string, string] => [
+      t,
+      CONTENT[t].label,
+      `/admin/content/${t}`,
+    ]),
+  ];
+  return html`${documentHead(`${title} · LUNA 관리자`)}
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="/admin/">LUNA</a>
+    <nav class="tabs" aria-label="관리 메뉴">${tabs.map(
+      ([key, label, href]) =>
+        html`<a href="${href}" ${key === active ? html`aria-current="page"` : ''}>${label}</a>`,
+    )}</nav>
+    <div class="me">
+      ${statusPill(frame.status)}
+      <a href="/" target="_blank" rel="noopener">사이트</a>
+      <span class="who" title="${frame.viewer.email}">${frame.viewer.name}</span>
+      <form method="post" action="/admin/logout" class="inline"><button type="submit" class="link">로그아웃</button></form>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+${body}
+</main>
+</body>
+</html>`.value;
+}
+
+/** 머리글의 사이트 반영 상태. admin.js가 /admin/status.json으로 새로 고친다. */
+export interface JobState {
+  busy: boolean;
+  tone: 'idle' | 'busy' | 'ok' | 'error';
+  label: string;
+  detail: string;
+}
+
+export function jobState(jobs: JobsStatus, siteReady: boolean): JobState {
+  const { running, queued, recent, buildPending } = jobs;
+  if (running || queued.length > 0) {
+    const kind = running?.kind ?? queued[0] ?? 'build';
+    return {
+      busy: true,
+      tone: 'busy',
+      label:
+        kind === 'import'
+          ? '가져오는 중…'
+          : kind === 'build' || queued.includes('build')
+            ? '사이트에 반영 중…'
+            : 'Notion 확인 중…',
+      detail: running ? `${JOB_LABELS[running.kind]} · ${running.reason}` : '곧 시작해요',
+    };
+  }
+  if (!siteReady || buildPending) {
+    return {
+      busy: false,
+      tone: 'error',
+      label: '반영 실패',
+      detail: '홈의 "사이트" 기록에서 이유를 볼 수 있어요.',
+    };
+  }
+  const last = recent.find((run) => run.kind === 'build');
+  return {
+    busy: false,
+    tone: 'idle',
+    label: '사이트 최신',
+    detail: last ? `마지막 반영 ${formatTime(last.finishedAt ?? last.startedAt)}` : '',
+  };
+}
+
+function statusPill(state: JobState): Html {
+  return html`<a class="status" href="/admin/#site-title" data-status="/admin/status.json" data-tone="${state.tone}" title="${state.detail}" aria-live="polite">${state.label}</a>`;
 }
 
 export function renderLoginPage(model: { configured: boolean; error?: string }): string {
@@ -120,30 +231,43 @@ export function renderLoginPage(model: { configured: boolean; error?: string }):
 }
 
 export function renderPage(model: PageModel): string {
-  const page = html`${documentHead()}
-<body>
-<header class="top">
-  <div class="wrap top-inner">
-    <strong class="brand">LUNA 관리자</strong>
-    <nav>
-      <a href="/" target="_blank" rel="noopener">사이트 열기</a>
-      <span class="who" title="${model.viewer.email}">${model.viewer.name}</span>
-      <form method="post" action="/admin/logout" class="inline"><button type="submit" class="link">로그아웃</button></form>
-    </nav>
-  </div>
-</header>
-<main class="wrap">
+  const status = jobState(model.jobs, model.siteReady);
+  return layout(
+    { viewer: model.viewer, status },
+    'home',
+    '홈',
+    html`<div class="page-head"><div><h1>홈</h1><p class="muted">사이트 내용은 위 메뉴에서 바로 고칠 수 있어요. 저장하면 1~2분 안에 사이트에 반영돼요.</p></div></div>
   ${model.notice ? noticeBox(model.notice) : ''}
-  <p class="lead">글과 사진은 Notion에서 고치면 15분 안에 사이트에 반영돼요. 여기서는 Notion에 없는 것만 다뤄요.</p>
-  ${syncSection(model)}
+  ${contentTiles(model)}
   ${siteSection(model)}
+  ${importSection()}
   ${settingsSection(model, 'recruit')}
   ${settingsSection(model, 'contact')}
-  ${adminsSection(model)}
-</main>
-</body>
-</html>`;
-  return page.value;
+  ${syncSection(model)}
+  ${adminsSection(model)}`,
+  );
+}
+
+function importSection(): Html {
+  return html`<section aria-labelledby="import-title">
+  <h2 id="import-title">Notion 내보내기 가져오기</h2>
+  <p class="help">Notion에서 ··· → 내보내기 → "Markdown & CSV"로 받은 zip을 올리면 멤버·수상·프로젝트·FAQ를 한 번에 가져와요. 여기서 직접 만들거나 고친 항목은 덮어쓰지 않아요.</p>
+  <form method="post" action="/admin/import" enctype="multipart/form-data" class="photo" data-import="/admin/import" data-max-bytes="${MAX_IMPORT_BYTES}">
+    <div class="photo-controls">
+      <input type="file" name="file" accept=".zip,application/zip" required>
+      <progress hidden></progress>
+      <span data-upload-status>zip, 200MB까지. 올리면 뒤에서 가져와요.</span>
+      <div class="actions"><button type="submit" class="secondary">올리고 가져오기</button></div>
+    </div>
+  </form>
+</section>`;
+}
+
+function contentTiles(model: PageModel): Html {
+  return html`<div class="tiles">${CONTENT_TABLES.map((table) => {
+    const count = model.counts.ok ? model.counts.value[table] : undefined;
+    return html`<a class="tile" href="/admin/content/${table}"><strong>${count ?? '—'}</strong><span>${CONTENT[table].label}</span></a>`;
+  })}</div>`;
 }
 
 function noticeBox(notice: Notice): Html {
@@ -160,6 +284,7 @@ function syncSection(model: PageModel): Html {
 
   return html`<section aria-labelledby="sync-title">
   <h2 id="sync-title">Notion 동기화</h2>
+  <p class="help">Notion을 쓰지 않으면 이 구역은 신경 쓰지 않아도 돼요. 여기서 만든 항목은 동기화가 지우지 않아요.</p>
   ${!model.sync.ok ? html`<p class="notice error">동기화 상태를 읽지 못했어요: ${model.sync.error}</p>` : ''}
   ${
     running
@@ -242,7 +367,11 @@ function siteSection(model: PageModel): Html {
 </section>`;
 }
 
-const JOB_LABELS = { sync: 'Notion 동기화', build: '사이트 만들기' } as const;
+const JOB_LABELS = {
+  sync: 'Notion 동기화',
+  import: 'Notion 내보내기 가져오기',
+  build: '사이트 만들기',
+} as const;
 
 function jobItem(run: JobRun): Html {
   const badge =
@@ -335,7 +464,7 @@ function adminsSection(model: PageModel): Html {
     : [];
   return html`<section aria-labelledby="admins-title">
   <h2 id="admins-title">운영진</h2>
-  <p class="help">여기 있는 Google 계정만 관리자 페이지에 들어올 수 있어요.</p>
+  <p class="help">여기 있는 Google 계정만 관리자 페이지에 들어올 수 있어요. Google Cloud의 OAuth 앱이 "테스트 중"이면 Google 인증 플랫폼 → 대상 → 테스트 사용자에도 같은 주소를 넣어 주세요.</p>
   ${!model.admins.ok ? html`<p class="notice error">운영진 목록을 읽지 못했어요: ${model.admins.error}</p>` : ''}
   <ul class="runs">
     ${model.owners.map(
@@ -394,55 +523,150 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-const STYLE = `
-:root { color-scheme: light dark; --bg:#f6f6f8; --card:#fff; --fg:#1c1c1e; --muted:#5f5f66; --line:#e2e2e7;
-  --accent:#5b4bdb; --onaccent:#fff; --ok:#1f7a3d; --okbg:#e7f5ec; --warn:#8a5a00; --warnbg:#fff4dc; --err:#b42318; --errbg:#fdecea; }
-@media (prefers-color-scheme: dark) { :root { --bg:#0f0f14; --card:#1a1a22; --fg:#f2f2f5; --muted:#a3a3ad; --line:#2c2c36;
-  --accent:#9d92ff; --onaccent:#14112b; --ok:#6fd394; --okbg:#13301f; --warn:#ffcc66; --warnbg:#33260a; --err:#ff8a80; --errbg:#3a1512; } }
-* { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
-.wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
-.top { background: var(--card); border-bottom: 1px solid var(--line); }
-.top-inner { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:56px; flex-wrap:wrap; }
-.top nav { display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:14px; }
-.who { color: var(--muted); }
-a { color: var(--accent); }
-.lead { color: var(--muted); margin: 20px 0; }
-section { background: var(--card); border:1px solid var(--line); border-radius: 14px; padding: 20px; margin: 0 0 16px; }
-h2 { font-size: 18px; margin: 0 0 12px; }
-h3 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
-.help, .muted { color: var(--muted); font-size: 14px; }
-.table { overflow-x: auto; }
-table { width:100%; min-width: 560px; border-collapse: collapse; font-size: 14px; }
-tbody th, td:nth-child(2), td:nth-child(3) { white-space: nowrap; }
-th, td { text-align:left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-thead th { color: var(--muted); font-weight: 500; }
-.err { color: var(--err); white-space: pre-wrap; word-break: break-word; }
-.notice { padding: 10px 14px; border-radius: 10px; margin: 12px 0; }
-.notice p, .notice ul { margin: 0; }
-.notice.ok { background: var(--okbg); color: var(--ok); }
-.notice.warn { background: var(--warnbg); color: var(--warn); }
-.notice.error { background: var(--errbg); color: var(--err); }
-.badge { display:inline-block; font-size:12px; padding: 1px 8px; border-radius: 99px; background: var(--line); }
-.badge.ok { background: var(--okbg); color: var(--ok); }
-.badge.warn { background: var(--warnbg); color: var(--warn); }
-.badge.error { background: var(--errbg); color: var(--err); }
-.runs { list-style:none; padding:0; margin:0; font-size:14px; }
-.runs li { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding: 4px 0; }
-.runs details { flex-basis: 100%; }
-.runs pre { margin: 6px 0 0; padding: 10px; max-height: 320px; overflow: auto; background: var(--errbg); border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
-.actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top: 14px; }
-.check { display:flex; gap:6px; align-items:center; font-size:14px; }
-.fields label { display:block; margin: 0 0 12px; }
-.fields label span { display:block; font-size: 14px; margin-bottom: 4px; }
-input:not([type]), input[type=text], input[type=email], input[type=date], select { width:100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
-button, a.button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--accent); color: var(--onaccent); cursor: pointer; }
-a.button { display: inline-block; text-decoration: none; }
-button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
-button.link { background: none; color: var(--accent); padding: 0; font-weight: 400; text-decoration: underline; }
-form.inline { display: inline; margin: 0; }
-.login { max-width: 420px; padding-top: 12vh; }
-.login h1 { font-size: 22px; margin: 0 0 8px; }
-button:disabled { opacity: .5; cursor: not-allowed; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-`;
+export interface ContentListModel extends Frame {
+  table: ContentTable;
+  rows: Loaded<ContentRow[]>;
+  notice?: Notice;
+}
+
+export function renderContentList(model: ContentListModel): string {
+  const def = CONTENT[model.table];
+  const rows = model.rows.ok ? model.rows.value : [];
+  return layout(
+    model,
+    model.table,
+    def.label,
+    html`<div class="page-head">
+    <div><h1>${def.label}</h1><p class="muted">${model.rows.ok ? `${rows.length}개` : ''}</p></div>
+    <a class="button" href="/admin/content/${model.table}/new">+ ${def.noun} 추가</a>
+  </div>
+  ${model.notice ? noticeBox(model.notice) : ''}
+  ${!model.rows.ok ? html`<p class="notice error">목록을 읽지 못했어요: ${model.rows.error}</p>` : ''}
+  ${
+    model.rows.ok && rows.length === 0
+      ? html`<div class="card empty-state">아직 ${def.label} 항목이 없어요. 오른쪽 위 버튼으로 추가해 보세요.</div>`
+      : ''
+  }
+  ${
+    rows.length > 0
+      ? html`<div class="toolbar"><input type="search" placeholder="검색" aria-label="${def.label} 검색" data-filter hidden></div>
+  <ul class="items" data-filter-list>${rows.map((row) => contentItem(model.table, row))}</ul>`
+      : ''
+  }`,
+  );
+}
+
+function contentItem(table: ContentTable, row: ContentRow): Html {
+  const def = CONTENT[table];
+  const title = def.title(row.values) || '(제목 없음)';
+  return html`<li><a href="/admin/content/${table}/${row.id}">
+    ${def.images ? thumb(row.imageKey, 'thumb') : ''}
+    <span class="item-text"><strong>${title}</strong><span>${def.subtitle(row.values) || ' '}</span></span>
+    ${isAdminCreated(row.notionId) ? '' : html`<span class="badge">Notion</span>`}
+  </a></li>`;
+}
+
+function thumb(imageKey: string | null, className: string): Html {
+  return imageKey
+    ? html`<img class="${className}" src="/admin/img/${imageKey}-480.webp" alt="" loading="lazy" decoding="async" data-preview>`
+    : html`<span class="${className} empty" aria-hidden="true" data-preview>＋</span>`;
+}
+
+export interface ContentFormModel extends Frame {
+  table: ContentTable;
+  /** 고치는 행. 없으면 새로 만들기 */
+  row?: ContentRow;
+  /** 검사에 실패해 다시 보여 줄 입력 */
+  input?: Record<string, string>;
+  errors?: string[];
+  /** 입력 후보: 열 이름 → 이미 쓰는 값 */
+  suggestions: Record<string, string[]>;
+}
+
+export function renderContentForm(model: ContentFormModel): string {
+  const def = CONTENT[model.table];
+  const { row, input } = model;
+  const editing = row !== undefined;
+  const action = editing
+    ? `/admin/content/${model.table}/${row.id}`
+    : `/admin/content/${model.table}/new`;
+  const pendingKey = input?.imageKey ?? '';
+  const shownKey = pendingKey || (input?.removeImage === '1' ? null : (row?.imageKey ?? null));
+  const fromNotion = row !== undefined && !isAdminCreated(row.notionId);
+  const title = editing ? `${def.noun} 고치기` : `${def.noun} 추가`;
+
+  const field = (f: FieldDef) => {
+    const value = input ? (input[f.name] ?? '') : formValue(row?.values[f.name]);
+    const list =
+      f.suggest && (model.suggestions[f.name]?.length ?? 0) > 0 ? `${f.name}-options` : '';
+    const control =
+      f.kind === 'textarea'
+        ? html`<textarea name="${f.name}" maxlength="${f.max ?? ''}" ${f.required ? html`required` : ''}>${value}</textarea>`
+        : html`<input type="${f.kind === 'date' ? 'date' : 'text'}" name="${f.name}" value="${value}"
+            ${f.max ? html`maxlength="${f.max * (f.kind === 'list' ? 20 : 1)}"` : ''}
+            ${f.kind === 'int' ? html`inputmode="numeric" pattern="-?[0-9,]*"` : ''}
+            ${f.placeholder ? html`placeholder="${f.placeholder}"` : ''}
+            ${list ? html`list="${list}"` : ''} ${f.required ? html`required` : ''} autocomplete="off">`;
+    return html`<label>
+      <span>${f.label}${f.required ? ' *' : ''}</span>
+      ${control}
+      ${list ? html`<datalist id="${list}">${model.suggestions[f.name]?.map((v) => html`<option value="${v}">`)}</datalist>` : ''}
+      ${f.help ? html`<p class="help">${f.help}</p>` : ''}
+    </label>`;
+  };
+
+  return layout(
+    model,
+    model.table,
+    title,
+    html`<div class="page-head">
+    <div><h1>${title}</h1>${row ? html`<p class="muted">마지막 수정 ${formatTime(row.editedAt)}</p>` : ''}</div>
+    <a href="/admin/content/${model.table}">목록으로</a>
+  </div>
+  ${
+    fromNotion
+      ? html`<p class="notice warn">Notion에서 가져온 항목이에요. 여기서 고쳐도 되지만, 나중에 Notion에서 이 페이지를 고치면 그 내용으로 바뀌어요.</p>`
+      : ''
+  }
+  ${
+    model.errors && model.errors.length > 0
+      ? html`<div class="notice error" role="alert"><p>저장하지 않았어요. 아래를 고쳐 주세요.</p><ul>${model.errors.map((e) => html`<li>${e}</li>`)}</ul></div>`
+      : ''
+  }
+  <form method="post" action="${action}" enctype="multipart/form-data" class="card fields">
+    ${
+      def.images
+        ? html`<div class="field"><span>사진</span>
+      <div class="photo" data-upload="/admin/upload/${model.table}" data-max-bytes="${MAX_UPLOAD_BYTES}">
+        ${thumb(shownKey, 'photo-preview')}
+        <div class="photo-controls">
+          <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/avif,image/gif">
+          <input type="hidden" name="imageKey" value="${pendingKey}">
+          <progress hidden></progress>
+          <span data-upload-status>${pendingKey ? '사진 준비 완료. 저장하면 반영돼요.' : 'JPG·PNG·WebP, 20MB까지. 고르면 바로 올라가요.'}</span>
+          ${
+            row?.imageKey
+              ? html`<label class="check"><input type="checkbox" name="removeImage" value="1" ${input?.removeImage === '1' ? html`checked` : ''}> 사진 빼기</label>`
+              : ''
+          }
+        </div>
+      </div></div>`
+        : ''
+    }
+    ${def.fields.map(field)}
+    <div class="actions">
+      <button type="submit">${editing ? '저장' : '추가'}</button>
+      <a href="/admin/content/${model.table}">취소</a>
+    </div>
+  </form>
+  ${
+    editing
+      ? html`<form method="post" action="/admin/content/${model.table}/${row.id}/delete" class="card danger-zone" data-confirm="정말 지울까요? 되돌릴 수 없어요.">
+    <h2>지우기</h2>
+    <p class="help">사이트에서 바로 빠져요.${fromNotion ? ' Notion 페이지는 그대로라서 Notion에서 이 페이지를 고치면 다시 생겨요. 완전히 없애려면 Notion에서도 지워 주세요.' : ''}</p>
+    <button type="submit" class="danger">${def.noun} 지우기</button>
+  </form>`
+      : ''
+  }`,
+  );
+}

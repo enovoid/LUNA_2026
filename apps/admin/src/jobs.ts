@@ -1,4 +1,5 @@
-// 서버 안에서 도는 작업: Notion 동기화와 사이트 빌드. 둘 다 자식 프로세스로 실행하고 한 번에 하나씩만 돌린다.
+// 서버 안에서 도는 작업: Notion 동기화, Notion 내보내기(zip) 가져오기, 사이트 빌드.
+// 모두 자식 프로세스로 실행하고 한 번에 하나씩만 돌린다.
 // - 동기화: packages/sync를 그대로 실행한다. 바뀐 게 있으면 SYNC_NOTIFY_FILE을 남기고, 그러면 이어서 사이트를 다시 만든다.
 // - 빌드: Astro가 DB를 읽어 새 폴더에 사이트를 만든다. 성공하면 그 폴더로 바꾸고, 실패하면 이전 사이트를 그대로 둔다.
 import { spawn } from 'node:child_process';
@@ -6,7 +7,7 @@ import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Site } from './site.js';
 
-export type JobKind = 'sync' | 'build';
+export type JobKind = 'sync' | 'import' | 'build';
 
 export interface JobRun {
   kind: JobKind;
@@ -32,6 +33,8 @@ export interface JobsStatus {
 export interface Jobs {
   sync(options: { full: boolean; reason: string; trigger: 'admin' | 'cron' }): void;
   build(reason: string): void;
+  /** 올린 Notion 내보내기 zip을 DB에 넣는다. 끝나면 파일을 지우고 사이트를 다시 만든다. */
+  importZip(file: string, reason: string): void;
   status(): JobsStatus;
   /** 다음 작업이 없고 지금 도는 작업도 끝날 때까지 기다린다(테스트용). */
   idle(): Promise<void>;
@@ -61,6 +64,7 @@ export interface JobsOptions {
 }
 
 const HISTORY = 12;
+const KIND_LOG: Record<JobKind, string> = { sync: '동기화', import: '가져오기', build: '빌드' };
 const OUTPUT_LINES = 30;
 
 export function createJobs(options: JobsOptions): Jobs {
@@ -70,6 +74,7 @@ export function createJobs(options: JobsOptions): Jobs {
   const recent: JobRun[] = [];
   let pendingSync: { full: boolean; reason: string; trigger: string } | undefined;
   let pendingBuild: string | undefined;
+  const pendingImports: { file: string; reason: string }[] = [];
   let running: JobRun | undefined;
   let buildPending = false;
   let worker: Promise<void> | undefined;
@@ -89,6 +94,9 @@ export function createJobs(options: JobsOptions): Jobs {
         const job = pendingSync;
         pendingSync = undefined;
         await runSync(job);
+      } else if (pendingImports.length > 0) {
+        const job = pendingImports.shift();
+        if (job) await runImport(job);
       } else if (pendingBuild !== undefined) {
         const reason = pendingBuild;
         pendingBuild = undefined;
@@ -101,7 +109,7 @@ export function createJobs(options: JobsOptions): Jobs {
 
   async function track(job: JobRun, work: () => Promise<boolean>) {
     running = job;
-    log(`${job.kind === 'sync' ? '동기화' : '빌드'} 시작: ${job.reason}`);
+    log(`${KIND_LOG[job.kind]} 시작: ${job.reason}`);
     try {
       job.ok = await work();
     } catch (error) {
@@ -112,7 +120,7 @@ export function createJobs(options: JobsOptions): Jobs {
     running = undefined;
     recent.unshift(job);
     recent.length = Math.min(recent.length, HISTORY);
-    log(`${job.kind === 'sync' ? '동기화' : '빌드'} ${job.ok ? '성공' : '실패'}: ${job.reason}`);
+    log(`${KIND_LOG[job.kind]} ${job.ok ? '성공' : '실패'}: ${job.reason}`);
   }
 
   async function runSync(input: { full: boolean; reason: string; trigger: string }) {
@@ -135,6 +143,25 @@ export function createJobs(options: JobsOptions): Jobs {
       if (changed || buildPending) queueBuild('Notion 변경 반영');
       if (result.code !== 0) job.output = tail(result.output);
       return result.code === 0;
+    });
+  }
+
+  async function runImport(input: { file: string; reason: string }) {
+    const job: JobRun = { kind: 'import', reason: input.reason, startedAt: now() };
+    await track(job, async () => {
+      try {
+        const result = await run(
+          ['--filter', '@luna/sync', 'import:start', input.file],
+          { ...env },
+          abort.signal,
+        );
+        // 0: 성공, 1: 일부 실패(나머지는 반영됨), 2: 시작하지 못함
+        if (result.code === 0 || result.code === 1) queueBuild('Notion 내보내기 반영');
+        job.output = tail(result.output);
+        return result.code === 0;
+      } finally {
+        await rm(input.file, { force: true });
+      }
     });
   }
 
@@ -179,9 +206,14 @@ export function createJobs(options: JobsOptions): Jobs {
       queueBuild(reason);
       kick();
     },
+    importZip(file, reason) {
+      pendingImports.push({ file, reason });
+      kick();
+    },
     status() {
       const queued: JobKind[] = [];
       if (pendingSync) queued.push('sync');
+      for (const _ of pendingImports) queued.push('import');
       if (pendingBuild !== undefined) queued.push('build');
       return { running, queued, recent: [...recent], buildPending };
     },

@@ -2,6 +2,9 @@
   "name": "@luna/sync",
   "private": true,
   "type": "module",
+  "exports": {
+    "./images": "./src/images.ts"
+  },
   "scripts": {
     "start": "tsx src/index.ts",
     "sync": "tsx --env-file-if-exists=../../.env src/index.ts",
