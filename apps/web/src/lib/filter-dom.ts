@@ -21,6 +21,35 @@ export function applyFilter(param: string, value: string) {
   return shown;
 }
 
+/**
+ * applyFilter와 같지만, 지원하는 브라우저에서는 View Transition으로 카드가 새 자리로 미끄러지고
+ * 사라지는 카드는 흐려지며 빠진다(HIG: 바뀐 내용의 출처를 보여 주는 공간 연속성).
+ * 동작 줄이기면 카드 이름을 붙이지 않아 화면 전체가 크로스페이드만 한다.
+ */
+export function applyFilterWithTransition(param: string, value: string) {
+  const scope = document.querySelector<HTMLElement>(`[data-filter-scope="${param}"]`);
+  if (!scope || !document.startViewTransition) return applyFilter(param, value);
+  const items = [...scope.querySelectorAll<HTMLElement>('[data-filter-item]')];
+  const shown = items.filter((item) => value === ALL || item.dataset[param] === value).length;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // 화면 밖 카드까지 이름을 붙이면 캡처가 무거워지므로 보이는 범위 근처만 움직인다.
+  const near = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    return r.bottom > -window.innerHeight && r.top < window.innerHeight * 2;
+  };
+  const named = reduce ? [] : items.filter((el) => !el.hidden && near(el));
+  named.forEach((el, i) => {
+    el.style.viewTransitionName = `filter-item-${i}`;
+  });
+  const transition = document.startViewTransition(() => {
+    applyFilter(param, value);
+  });
+  transition.finished.finally(() => {
+    for (const el of named) el.style.viewTransitionName = '';
+  });
+  return shown;
+}
+
 export function readParam(param: string, options: readonly string[]) {
   const value = new URLSearchParams(window.location.search).get(param);
   return value && options.includes(value) ? value : ALL;

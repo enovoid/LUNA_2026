@@ -55,7 +55,7 @@ export const site = {
     desktop: {
       aspect: 2400 / 1350,
       moonX: 49.38,
-      moonY: 22.64,
+      moonY: 33.33,
       moonDiameter: 14.5,
       zoom: 2.4,
       sky: '/intro/intro-desk-sky.webp',
@@ -68,7 +68,7 @@ export const site = {
     mobile: {
       aspect: 900 / 1947,
       moonX: 50.05,
-      moonY: 31.93,
+      moonY: 35.95,
       moonDiameter: 39.2,
       zoom: 1.7,
       sky: '/intro/intro-mob-sky.webp',

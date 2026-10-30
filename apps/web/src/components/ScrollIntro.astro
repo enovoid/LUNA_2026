@@ -56,7 +56,9 @@ const buildings = Array.from({ length: 40 }, (_, i) => ({
 const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
 ---
 
-<section id="luna-intro" class="intro" data-intro data-config={config} data-tone="dark" style={vars} aria-labelledby="intro-title">
+<section id="luna-intro" class="intro" data-intro data-config={config} data-header-clear style={vars} aria-labelledby="intro-title">
+  <!-- 로고와 제목이 다 나온 순간(p=0.88)에 스크롤이 근처에서 멈추면 그 자리에 붙는다(proximity 스냅) -->
+  <span class="intro-snap" aria-hidden="true"></span>
   <div class="intro-stage">
     <div class="intro-layer" data-layer="sky" aria-hidden="true">
       {
@@ -140,9 +142,11 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     --mx: var(--d-mx);
     --my: var(--d-my);
     --moon: var(--d-moon);
+    /* 스크롤 길이: 화면 높이 × travel. 기준값은 apps/web/README.md "스크롤 속도" */
+    --travel: 2.8;
     position: relative;
-    height: 400vh;
-    height: 400svh;
+    height: calc(100vh * (var(--travel) + 1));
+    height: calc(100svh * (var(--travel) + 1));
     background: var(--color-brand-night);
   }
   @media (max-aspect-ratio: 3/4) {
@@ -151,7 +155,26 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
       --mx: var(--m-mx);
       --my: var(--m-my);
       --moon: var(--m-moon);
+      --travel: 2.4;
     }
+  }
+  .intro-snap {
+    position: absolute;
+    left: 0;
+    top: calc(100svh * var(--travel) * 0.88);
+    width: 1px;
+    height: 1px;
+    scroll-snap-align: start;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js:has(.intro:not(.is-static) .intro-snap)) {
+      scroll-snap-type: y proximity;
+    }
+  }
+  .intro.is-static .intro-snap,
+  :global(html:not(.js)) .intro-snap {
+    display: none;
   }
 
   .intro-stage {
@@ -390,6 +413,9 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     .intro {
       height: 100vh;
       height: 100svh;
+    }
+    .intro-snap {
+      display: none;
     }
     .intro-layer,
     .intro-ring,

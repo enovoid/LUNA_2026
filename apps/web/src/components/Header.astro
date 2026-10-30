@@ -1,6 +1,6 @@
 ---
 // 상단 내비. 홈에서는 인트로 위에 투명하게 겹치고(fixed), 다른 페이지에서는 유리 막대(sticky)다.
-// 아래에 깔린 구역의 밝기(data-tone="dark")에 따라 글자색을 바꾼다 → scripts/header-tone.ts
+// 인트로·소개처럼 배경이 꽉 찬 구역(data-header-clear) 위에서는 막대 없이 투명하고, 그 밖에서는 유리 막대가 깔린다 → scripts/header-bar.ts
 import { isRecruiting, type NavKey, nav, site } from '../content/site';
 import Logo from './Logo.astro';
 
@@ -11,7 +11,7 @@ interface Props {
 const { current, overlay = false } = Astro.props;
 ---
 
-<header class:list={["site-header", overlay && "is-overlay"]} data-site-header data-tone={overlay ? "dark" : "light"}>
+<header class:list={["site-header", overlay && "is-overlay"]} data-site-header data-bar={overlay ? "off" : "on"}>
   <div class="site-header-inner container-page">
     <a href="/" class="brand" aria-label="LUNA 홈">
       <span class="brand-logo" data-nav-logo><Logo size={30} /></span>
@@ -34,7 +34,7 @@ const { current, overlay = false } = Astro.props;
 
     {
       isRecruiting ? (
-        <a href={site.recruit.applyUrl} class="btn btn-sm header-cta" rel="noopener" target="_blank">
+        <a href={site.recruit.applyUrl} class="btn btn-sm btn-primary header-cta" rel="noopener" target="_blank">
           지원하기
           <span class="sr-only">(새 창)</span>
         </a>
@@ -52,29 +52,25 @@ const { current, overlay = false } = Astro.props;
     z-index: 30;
     padding-block: 12px;
     color: var(--color-label);
-    transition: color 0.2s;
+    view-transition-name: site-header;
   }
   /* 유리 막대는 별도 층으로 깔아 opacity만 바꾼다(배경 전환이 레이아웃을 건드리지 않게). */
   .site-header::before {
     content: "";
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, var(--color-bg) 78%, transparent);
-    -webkit-backdrop-filter: blur(16px) saturate(1.6);
-    backdrop-filter: blur(16px) saturate(1.6);
-    box-shadow: inset 0 -0.5px 0 var(--color-separator);
+    background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
     opacity: 1;
-    transition: opacity 0.2s;
+    transition: opacity var(--fade-dur) ease;
     pointer-events: none;
   }
   .site-header.is-overlay {
     position: fixed;
     inset-inline: 0;
   }
-  .site-header[data-tone="dark"] {
-    color: #fff;
-  }
-  .site-header[data-tone="dark"]::before {
+  .site-header[data-bar="off"]::before {
     opacity: 0;
   }
   .site-header-inner {
@@ -108,10 +104,9 @@ const { current, overlay = false } = Astro.props;
     padding: 4px;
     list-style: none;
     border-radius: 1000px;
-    background: #ffffffc7;
+    background: #ffffff14;
     -webkit-backdrop-filter: blur(16px) saturate(1.6);
     backdrop-filter: blur(16px) saturate(1.6);
-    box-shadow: var(--shadow-glass-small);
   }
   .top-tabs a {
     display: inline-flex;
@@ -123,39 +118,17 @@ const { current, overlay = false } = Astro.props;
     font-weight: 500;
     color: var(--color-label);
     text-decoration: none;
-    transition: background-color 0.15s;
+    transition: background-color var(--fade-dur) ease;
   }
   .top-tabs a:hover {
-    background: var(--color-fill-4);
+    background: #ffffff14;
   }
   .top-tabs a[aria-current="page"] {
     background: var(--color-lavender-tint);
-    color: var(--color-brand-violet);
+    color: var(--color-accent);
     font-weight: 600;
   }
-  .site-header[data-tone="dark"] .top-tabs ul {
-    background: #ffffff1f;
-    box-shadow: inset 0 0 0 0.5px #ffffff33;
-  }
-  .site-header[data-tone="dark"] .top-tabs a {
-    color: #fff;
-  }
-  .site-header[data-tone="dark"] .top-tabs a[aria-current="page"] {
-    background: #ffffff26;
-    color: #fff;
-  }
-  .site-header[data-tone="dark"] :focus-visible {
-    outline-color: var(--color-brand-lavender);
-  }
 
-  .header-cta {
-    background: var(--color-brand-violet);
-    color: #fff;
-  }
-  .site-header[data-tone="dark"] .header-cta {
-    background: var(--color-brand-lavender);
-    color: var(--color-brand-night);
-  }
   /* 지원하기 버튼이 없을 때도 탭이 가운데에 오도록 같은 폭의 빈 자리를 둔다 */
   .header-cta-placeholder {
     width: 104px;

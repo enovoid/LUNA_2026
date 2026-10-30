@@ -20,36 +20,72 @@ const { members, awards, projects, faqs } = await loadSiteData();
 const stats = computeStats(members, awards);
 const sortedFaqs = sortFaqs(faqs);
 const intro = sortedFaqs[0]?.answer ?? '';
-const latestProjects = sortProjects(projects).slice(0, 3);
+const latestProjects = sortProjects(projects).slice(0, 6);
 const latestAwards = sortAwards(awards).slice(0, 3);
+// data-count: 화면에 들어오면 0부터 이 값까지 세어 올라간다(scripts/count-up.ts). JS가 없으면 처음부터 최종값.
 const statItems = [
-  { value: `${stats.awardCount.toLocaleString('ko-KR')}회`, label: '대회 수상' },
-  { value: formatWon(stats.prizeTotal), label: '누적 상금' },
-  { value: `${stats.memberCount.toLocaleString('ko-KR')}명`, label: '함께한 멤버' },
+  {
+    value: `${stats.awardCount.toLocaleString('ko-KR')}회`,
+    count: stats.awardCount,
+    format: 'count',
+    unit: '회',
+    label: '대회 수상',
+  },
+  {
+    value: formatWon(stats.prizeTotal),
+    count: stats.prizeTotal,
+    format: 'won',
+    unit: '',
+    label: '누적 상금',
+  },
+  {
+    value: `${stats.memberCount.toLocaleString('ko-KR')}명`,
+    count: stats.memberCount,
+    format: 'count',
+    unit: '명',
+    label: '함께한 멤버',
+  },
 ];
+// 소개 문단을 낱말로 나눈다. 스크롤하면 줄 단위로 밝아진다(CSS 스크롤 타임라인, JS 없음).
+const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는 달, LUNA']).map((p) =>
+  p.split(/\s+/).filter(Boolean),
+);
 ---
 
 <Base current="home" overlayHeader>
   <ScrollIntro slot="hero" />
 
-  <section class="about on-dark" data-tone="dark" aria-label="루나 소개">
-    <div class="about-inner" data-reveal>
-      {intro ? textToParagraphs(intro).map((p) => <p class="about-text">{p}</p>) : <p class="about-text">세상을 비추는 달, LUNA</p>}
-      <div class="about-actions">
-        <a href="/projects" class="btn btn-primary-dark">프로젝트 둘러보기</a>
-        <a href={isRecruiting ? "#apply" : "#faq"} class="btn btn-ghost-dark">지원 안내</a>
+  <section class="about" data-header-clear aria-label="루나 소개">
+    <div class="about-inner">
+      {
+        aboutParagraphs.map((words) => (
+          <p class="about-text">
+            {words.map((w) => (
+              <span class="hl-word">{w} </span>
+            ))}
+          </p>
+        ))
+      }
+      <div class="about-actions" data-reveal>
+        <a href="/projects" class="btn btn-primary">프로젝트 둘러보기</a>
+        <a href={isRecruiting ? "#apply" : "#faq"} class="btn btn-ghost">지원 안내</a>
       </div>
     </div>
   </section>
 
   <div class="home-sections">
-    <section aria-labelledby="stats-title" class="container-page">
-      <h2 id="stats-title" class="sr-only">루나의 성과</h2>
+    <section aria-labelledby="stats-title" class="container-page section-stack">
+      <div class="headline" data-reveal>
+        <span class="eyebrow">BY THE NUMBERS</span>
+        <h2 id="stats-title">숫자로 보는 루나</h2>
+      </div>
       <ul class="stats" data-reveal>
         {
-          statItems.map((s) => (
-            <li class="stat card">
-              <span class="stat-value">{s.value}</span>
+          statItems.map((s, i) => (
+            <li class="stat card" data-reveal-item style={`--i:${i}`}>
+              <span class="stat-value" data-count={s.count} data-count-format={s.format} data-count-unit={s.unit}>
+                {s.value}
+              </span>
               <span class="stat-label">{s.label}</span>
             </li>
           ))
@@ -57,31 +93,45 @@ const statItems = [
       </ul>
     </section>
 
-    <section id="projects" aria-labelledby="projects-title" class="container-page">
-      <div class="section-stack" data-reveal>
-        <div class="section-head">
-          <h2 id="projects-title">프로젝트</h2>
-          {latestProjects.length > 0 && <a href="/projects" class="more-link">모두 보기</a>}
+    <section id="projects" aria-labelledby="projects-title" class="section-stack">
+      <div class="container-page section-head" data-reveal>
+        <div class="headline">
+          <span class="eyebrow">PROJECTS</span>
+          <h2 id="projects-title">세상을 비추는 프로젝트</h2>
         </div>
-        {
-          latestProjects.length > 0 ? (
-            <ul class="project-grid">
-              {latestProjects.map((p) => (
-                <li>
+        {latestProjects.length > 0 && <a href="/projects" class="more-link">모두 보기</a>}
+      </div>
+      {
+        latestProjects.length > 0 ? (
+          <div class="gallery" data-gallery data-reveal>
+            <ul class="gallery-track" data-gallery-track aria-label="최근 프로젝트">
+              {latestProjects.map((p, i) => (
+                <li class="gallery-item" data-reveal-item style={`--i:${i}`}>
                   <ProjectCard project={p} compact headingLevel={3} />
                 </li>
               ))}
             </ul>
-          ) : (
+            <div class="container-page gallery-nav" data-gallery-nav>
+              <button type="button" class="paddle pressable" data-gallery-prev aria-label="이전 프로젝트">
+                <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>
+              </button>
+              <button type="button" class="paddle pressable" data-gallery-next aria-label="다음 프로젝트">
+                <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div class="container-page">
             <EmptyState title="아직 소개할 프로젝트가 없어요" message="프로젝트가 등록되면 이곳에 보여요." />
-          )
-        }
-      </div>
+          </div>
+        )
+      }
     </section>
 
     <section id="awards" aria-labelledby="awards-title" class="container-page">
       <div class="split" data-reveal>
         <div class="split-aside">
+          <span class="eyebrow">AWARDS</span>
           <h2 id="awards-title">수상</h2>
           <p>대회에서 거둔 성과를 연도별로 기록합니다.</p>
           {latestAwards.length > 0 && <a href="/awards" class="more-link">전체 수상 기록</a>}
@@ -114,6 +164,7 @@ const statItems = [
     <section id="faq" aria-labelledby="faq-title" class="container-page">
       <div class="split" data-reveal>
         <div class="split-aside">
+          <span class="eyebrow">FAQ</span>
           <h2 id="faq-title">자주 묻는 질문</h2>
           <p>지원 전에 궁금한 점을 모았습니다.</p>
         </div>
@@ -142,14 +193,14 @@ const statItems = [
     {
       isRecruiting && (
         <section id="apply" aria-labelledby="apply-title" class="container-page">
-          <div class="apply on-dark" data-reveal>
+          <div class="apply">
             <Logo size={320} class="apply-mark" />
             <div class="apply-text">
               <span class="apply-eyebrow">RECRUITING</span>
               <h2 id="apply-title">LUNA {site.recruit.generation} 멤버 모집</h2>
               <p>{[site.recruit.period, site.recruit.target].filter(Boolean).join(" · ")}</p>
             </div>
-            <a href={site.recruit.applyUrl} class="btn btn-primary-dark apply-cta" target="_blank" rel="noopener">
+            <a href={site.recruit.applyUrl} class="btn btn-primary apply-cta" target="_blank" rel="noopener">
               지원서 작성하기<span class="sr-only">(새 창)</span>
             </a>
           </div>
@@ -160,27 +211,47 @@ const statItems = [
 </Base>
 
 <style>
+  /* 소개: 인트로의 밤하늘에서 그대로 이어진다. 낱말이 화면 아래에서 가운데로 올라오는 동안 밝아진다(Apple 제품 페이지의 줄 하이라이트). */
   .about {
     display: flex;
     justify-content: center;
-    padding: 96px 24px 120px;
-    background: var(--color-brand-night);
-    color: #fff;
+    padding: 96px 24px 136px;
+    background:
+      radial-gradient(70% 55% at 50% 0%, #524b9b59, transparent 70%),
+      var(--color-bg);
   }
   .about-inner {
     width: 100%;
-    max-width: 900px;
+    max-width: 920px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 24px;
+    gap: 28px;
     text-align: center;
   }
   .about-text {
     margin: 0;
-    font-size: clamp(22px, 3.2vw, 40px);
-    line-height: 1.45;
-    font-weight: 600;
+    font-size: clamp(24px, 3.6vw, 44px);
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .hl-word {
+        animation: hl-word linear both;
+        animation-timeline: view();
+        animation-range: cover 12% cover 42%;
+      }
+    }
+  }
+  @keyframes hl-word {
+    from {
+      opacity: 0.2;
+    }
+    to {
+      opacity: 1;
+    }
   }
   .about-actions {
     display: flex;
@@ -189,56 +260,49 @@ const statItems = [
     gap: 12px;
   }
 
+  /* 아래 구역: 같은 밤색 위에 아주 옅은 라벤더 빛을 몇 군데 깔아 인트로와 한 장면처럼 이어지게 한다. */
   .home-sections {
     display: flex;
     flex-direction: column;
-    gap: 80px;
-    padding: 80px 0 96px;
+    gap: 96px;
+    padding: 24px 0 120px;
+    background:
+      radial-gradient(45% 30% at 88% 22%, #907fdf14, transparent 70%),
+      radial-gradient(50% 30% at 8% 62%, #524b9b26, transparent 70%),
+      radial-gradient(60% 25% at 50% 100%, #524b9b33, transparent 70%),
+      var(--color-bg);
   }
   @media (min-width: 768px) {
     .home-sections {
-      gap: 96px;
-      padding-block: 96px;
+      gap: 128px;
     }
+  }
+
+  /* 큰 제목 + 작은 영문 머리글(Apple 섹션 헤드라인) */
+  .headline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .eyebrow {
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--color-accent);
   }
   h2 {
     margin: 0;
-    font-size: 34px;
-    line-height: 41px;
-    font-weight: 700;
-  }
-
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  .stat {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 28px;
-  }
-  .stat-value {
-    font-size: 44px;
-    line-height: 52px;
-    font-weight: 700;
-    color: var(--color-brand-violet);
-    font-variant-numeric: tabular-nums;
-  }
-  .stat-label {
-    font-size: 17px;
-    line-height: 24px;
-    color: var(--color-label-2);
+    font-size: clamp(32px, 4.4vw, 48px);
+    line-height: 1.12;
+    font-weight: 800;
+    letter-spacing: -0.02em;
   }
 
   .section-stack {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 28px;
   }
   .section-head {
     display: flex;
@@ -251,13 +315,102 @@ const statItems = [
     font-size: 17px;
     font-weight: 600;
   }
-  .project-grid {
+
+  /* 숫자: 큰 그라데이션 숫자 + 작은 설명. 세어 올라가는 동안에도 칸 크기는 그대로(tabular-nums, 한 줄). */
+  .stats {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 16px;
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 32px 28px;
+  }
+  .stat-value {
+    font-size: clamp(40px, 4.6vw, 56px);
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    background: linear-gradient(100deg, var(--color-moonlight) 10%, var(--color-brand-lavender) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .stat-label {
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--color-label-2);
+  }
+
+  /* 프로젝트 갤러리: 가로로 넘기는 카드 줄(스크롤 스냅). 첫 카드는 본문 왼쪽 선에 맞추고 오른쪽은 화면 끝까지 흐른다. */
+  .gallery {
+    --gutter: max(var(--margin), calc((100vw - 1200px) / 2 + 24px));
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  @media (max-width: 767px) {
+    .gallery {
+      --gutter: var(--margin);
+    }
+  }
+  .gallery-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(82vw, 360px);
+    gap: 16px;
+    margin: 0;
+    padding: 4px var(--gutter) 8px;
+    list-style: none;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+  }
+  .gallery-track::-webkit-scrollbar {
+    display: none;
+  }
+  .gallery-item {
+    scroll-snap-align: start;
+  }
+  .gallery-nav {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  /* 버튼 자리는 처음부터 잡아 두고(CLS 0), 넘길 카드가 있을 때만 보인다. */
+  .gallery-nav:not(.is-active) {
+    visibility: hidden;
+  }
+  .paddle {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: #ffffff1f;
+    color: var(--color-label);
+    cursor: pointer;
+    transition:
+      background-color var(--fade-dur) ease,
+      opacity var(--fade-dur) ease,
+      transform var(--spring-snappy-dur) var(--spring-snappy);
+  }
+  .paddle:hover {
+    background: #ffffff2e;
+  }
+  .paddle:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
 
   .split {
@@ -300,11 +453,15 @@ const statItems = [
     padding: 12px 20px;
     color: var(--color-label);
     text-decoration: none;
-    transition: background-color 0.15s;
+    transition: background-color var(--fade-dur) ease;
   }
   .list-row:hover {
     background: var(--color-fill-4);
     text-decoration: none;
+  }
+  .list-row:active {
+    background: var(--color-fill-3);
+    transition-duration: var(--press-dur);
   }
   .list-text {
     flex: 1;
@@ -333,8 +490,10 @@ const statItems = [
     color: var(--color-label-2);
   }
 
+  /* FAQ: 펼칠 때 높이가 스프링으로 열린다(지원 브라우저). 화살표는 snappy 스프링으로 돈다. */
   .faq {
     overflow: hidden;
+    interpolate-size: allow-keywords;
   }
   .faq details {
     padding: 0 20px;
@@ -359,10 +518,22 @@ const statItems = [
   .faq-chev {
     font-size: 22px;
     color: var(--color-label-2);
-    transition: transform 0.15s;
+    transition: transform var(--spring-snappy-dur) var(--spring-snappy);
   }
   .faq details[open] .faq-chev {
     transform: rotate(90deg);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .faq details::details-content {
+      block-size: 0;
+      overflow: clip;
+      transition:
+        block-size var(--spring-smooth-dur) var(--spring-smooth),
+        content-visibility var(--spring-smooth-dur) allow-discrete;
+    }
+    .faq details[open]::details-content {
+      block-size: auto;
+    }
   }
   .faq details p {
     margin: 0;
@@ -373,6 +544,7 @@ const statItems = [
     white-space: pre-line;
   }
 
+  /* 모집 카드: 화면에 들어오며 조금 작은 크기에서 제 크기로 커진다(스크롤에 묶임, Apple의 프레임 진입). */
   .apply {
     position: relative;
     overflow: hidden;
@@ -383,12 +555,32 @@ const statItems = [
     gap: 32px;
     padding: 40px 28px;
     border-radius: 34px;
-    background: var(--color-brand-night);
-    color: #fff;
+    background:
+      radial-gradient(80% 120% at 100% 0%, #907fdf40, transparent 60%),
+      var(--color-card-2);
   }
   @media (min-width: 768px) {
     .apply {
       padding: 48px;
+    }
+  }
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .apply {
+        animation: frame-in linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 35%;
+      }
+    }
+  }
+  @keyframes frame-in {
+    from {
+      opacity: 0.4;
+      transform: scale(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
   .apply :global(.apply-mark) {
@@ -409,7 +601,7 @@ const statItems = [
     line-height: 20px;
     font-weight: 600;
     letter-spacing: 0.16em;
-    color: var(--color-brand-lavender);
+    color: var(--color-accent);
   }
   .apply h2 {
     font-size: clamp(30px, 4vw, 40px);
@@ -419,9 +611,14 @@ const statItems = [
     margin: 0;
     font-size: 17px;
     line-height: 26px;
-    color: #ffffffcc;
+    color: var(--color-label-2);
   }
   .apply-cta {
     position: relative;
   }
 </style>
+
+<script>
+  import "../scripts/count-up";
+  import "../scripts/gallery";
+</script>

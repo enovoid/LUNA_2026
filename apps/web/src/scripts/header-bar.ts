@@ -1,10 +1,8 @@
-// 헤더 바로 아래에 어두운 구역(data-tone="dark")이 있으면 헤더를 밝은 글자로 바꾼다.
+// 헤더 바로 아래가 배경이 꽉 찬 구역(data-header-clear: 인트로·소개)이면 유리 막대를 걷어 투명하게 둔다.
 const header = document.querySelector<HTMLElement>('[data-site-header]');
-const darkZones = document.querySelectorAll<HTMLElement>(
-  '[data-tone="dark"]:not([data-site-header])',
-);
+const clearZones = document.querySelectorAll<HTMLElement>('[data-header-clear]');
 
-if (header && darkZones.length > 0) {
+if (header && clearZones.length > 0) {
   const visible = new Set<Element>();
   let io: IntersectionObserver | undefined;
 
@@ -19,11 +17,11 @@ if (header && darkZones.length > 0) {
           if (e.isIntersecting) visible.add(e.target);
           else visible.delete(e.target);
         }
-        header.dataset.tone = visible.size > 0 ? 'dark' : 'light';
+        header.dataset.bar = visible.size > 0 ? 'off' : 'on';
       },
       { rootMargin: `0px 0px ${band - window.innerHeight}px 0px` },
     );
-    for (const zone of darkZones) io.observe(zone);
+    for (const zone of clearZones) io.observe(zone);
   };
 
   observe();

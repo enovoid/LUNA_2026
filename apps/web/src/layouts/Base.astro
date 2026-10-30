@@ -30,14 +30,14 @@ const { source } = await loadSiteData();
 ---
 
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
-    <meta name="theme-color" content={overlayHeader ? "#0e0d14" : "#f2f2f7"} />
+    <meta name="theme-color" content="#0e0d14" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="루나 LUNA" />
@@ -65,7 +65,7 @@ const { source } = await loadSiteData();
     <TabBar current={current} />
     <script>
       import "../scripts/reveal";
-      import "../scripts/header-tone";
+      import "../scripts/header-bar";
     </script>
   </body>
 </html>
