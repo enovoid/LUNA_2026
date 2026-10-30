@@ -59,7 +59,6 @@ const tabs = [
     justify-content: center;
     padding-inline: 16px;
     pointer-events: none;
-    view-transition-name: tab-bar;
   }
   ul {
     display: flex;
@@ -71,6 +70,9 @@ const tabs = [
     list-style: none;
     border-radius: 1000px;
     pointer-events: auto;
+    /* 페이지 이동 때 제자리에 둔다. 이름은 흐림이 걸린 요소 자신에 둔다: 조상에 두면 그 조상이
+       backdrop root가 되어 흐림이 아무것도 못 본다(Chromium). */
+    view-transition-name: tab-bar;
   }
   li {
     flex: 1;
@@ -83,9 +85,10 @@ const tabs = [
     justify-content: center;
     gap: 1px;
     border-radius: 1000px;
-    color: var(--color-label);
-    font-size: 10px;
-    line-height: 12px;
+    color: inherit;
+    /* 디자인 시스템 caption-2-emphasized(11/13, 600) */
+    font-size: 11px;
+    line-height: 13px;
     font-weight: 600;
     text-decoration: none;
   }
@@ -95,8 +98,8 @@ const tabs = [
       transform var(--spring-snappy-dur) var(--spring-snappy);
   }
   a[aria-current="page"] {
-    color: var(--color-accent);
-    background: var(--color-lavender-tint);
+    color: var(--accent-on-soft);
+    background: var(--accent-soft);
   }
   @media (prefers-reduced-motion: no-preference) {
     a:active {

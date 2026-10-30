@@ -121,13 +121,14 @@ const dateText = formatDate(award.date);
   .badge {
     padding: 4px 12px;
     border-radius: 1000px;
-    background: var(--color-lavender-tint);
-    color: var(--color-accent);
+    background: var(--surface-2);
+    color: var(--text);
     font-weight: 700;
   }
+  /* 1위·대상 같은 강조 배지만 꽉 찬 라벤더 */
   .badge-top {
-    background: var(--color-brand-lavender);
-    color: var(--color-brand-night);
+    background: var(--accent);
+    color: var(--on-accent);
   }
   h3 {
     margin: 0;
@@ -166,12 +167,14 @@ const dateText = formatDate(award.date);
     padding: 0;
     list-style: none;
   }
+  /* 멤버 카드로 가는 칩만 누를 수 있어 강조 글자 */
   .chip-link {
-    color: var(--color-accent);
+    color: var(--accent-text);
     text-decoration: none;
+    transition: background-color var(--fade-dur) ease;
   }
   .chip-link:hover {
-    background: var(--color-lavender-tint);
+    background: var(--fill-1-hover);
     text-decoration: none;
   }
 </style>

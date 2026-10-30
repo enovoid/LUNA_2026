@@ -23,7 +23,7 @@ const Heading = `h${headingLevel}` as 'h2' | 'h3';
         </div>
       </div>
       {project.description && <p class="pc-desc">{project.description}</p>}
-      {project.awardNames[0] && <span class="chip chip-brand pc-award">{project.awardNames[0]}</span>}
+      {project.awardNames[0] && <span class="chip pc-award">{project.awardNames[0]}</span>}
     </article>
   ) : (
     <article class="project card">
@@ -33,7 +33,7 @@ const Heading = `h${headingLevel}` as 'h2' | 'h3';
       <div class="project-body">
         <div class="project-head">
           <Heading>{project.name}</Heading>
-          {project.year && <span class="chip">{project.year}</span>}
+          {project.year && <span class="chip chip-plain">{project.year}</span>}
         </div>
         {project.description && <p class="project-desc">{project.description}</p>}
         {project.awardNames.length > 0 && (
@@ -113,7 +113,7 @@ const Heading = `h${headingLevel}` as 'h2' | 'h3';
     aspect-ratio: 16 / 9;
     display: grid;
     place-items: center;
-    background: var(--color-fill-4);
+    background: var(--surface-2);
   }
   .project-cover :global(.project-logo) {
     width: 96px;
@@ -151,8 +151,5 @@ const Heading = `h${headingLevel}` as 'h2' | 'h3';
     margin: 0;
     padding: 4px 0 0;
     list-style: none;
-  }
-  .project-awards .chip {
-    padding: 6px 12px;
   }
 </style>

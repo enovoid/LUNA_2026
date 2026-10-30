@@ -1,14 +1,15 @@
 ---
 // 홈 첫 화면 스크롤 인트로. 밤하늘의 달 → 중간까지 확대 후 멈춤 → 달이 그 자리에서 루나 로고로 바뀜
-// → 로고 곡선 안쪽에서 "LUNA" 글자가 옆으로 나옴 → "세상을 비추는 달, LUNA".
+// → "LUNA" 글자와 제목 → 구름이 닫히며 로고를 덮음 → 바탕색으로 수렴해 소개 문단과 이음새 없이 이어진다.
+// 구간 표는 scripts/intro.ts.
 // 움직임은 transform·opacity만 쓴다(합성 단계에서 처리돼 레이아웃·페인트를 다시 하지 않음).
-// 애니메이션은 scripts/intro.ts(GSAP + ScrollTrigger). reduced-motion·JS 꺼짐·GSAP 로드 실패면 최종 화면을 정적으로 보여 준다.
+// reduced-motion·JS 꺼짐·GSAP 로드 실패면 로고 + 제목 위에 구름이 반쯤 걸친 정적 화면을 한 화면으로 보여 준다.
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { site } from '../content/site';
 import Logo from './Logo.astro';
 
-const { usePhotos, desktop, mobile, mobileMedia } = site.introScene;
+const { usePhotos, desktop, mobile, mobileMedia, clouds } = site.introScene;
 // 달 고해상도 파일이 둘 다 있을 때만 겹친다(없으면 깨진 이미지 대신 원래 사진만 보인다).
 const hasMoonDetail = [desktop.moonDetail, mobile.moonDetail].every((src) =>
   existsSync(join(process.cwd(), 'public', src)),
@@ -60,8 +61,6 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
 ---
 
 <section id="luna-intro" class="intro" data-intro data-config={config} data-header-clear style={vars} aria-labelledby="intro-title">
-  <!-- 로고와 제목이 다 나온 순간(p=0.88)에 스크롤이 근처에서 멈추면 그 자리에 붙는다(proximity 스냅) -->
-  <span class="intro-snap" aria-hidden="true"></span>
   <div class="intro-stage">
     <div class="intro-layer" data-layer="sky" aria-hidden="true">
       {
@@ -102,8 +101,13 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
       }
     </div>
 
+    <!-- 달 둘레만 남기고 어두워지는 막 → 어두운 배경 → (로고) → 바탕색 막 → 구름 → 아래 22% 어둠 -->
     <div class="intro-ring" data-layer="ring" aria-hidden="true"></div>
     <div class="intro-dark" data-layer="dark" aria-hidden="true"></div>
+    <div class="intro-curtain" data-layer="curtain" aria-hidden="true"></div>
+    <img class="intro-cloud intro-cloud-top" data-layer="cloudTop" src={clouds.top.src} width={clouds.top.width} height={clouds.top.height} alt="" aria-hidden="true" loading="lazy" decoding="async" draggable="false" />
+    <img class="intro-cloud intro-cloud-bottom" data-layer="cloudBottom" src={clouds.bottom.src} width={clouds.bottom.width} height={clouds.bottom.height} alt="" aria-hidden="true" loading="lazy" decoding="async" draggable="false" />
+    <div class="intro-fade" data-layer="fade" aria-hidden="true"></div>
 
     <div class="intro-content" data-layer="content">
       <div class="lockup">
@@ -118,7 +122,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
       </div>
       <div class="intro-title" data-layer="title">
         <p class="intro-eyebrow">IT SOCIAL VENTURE{sinceYear}</p>
-        <h1 id="intro-title">세상을 비추는 달, <span>LUNA</span></h1>
+        <h1 id="intro-title">세상을 비추는 달, LUNA</h1>
       </div>
     </div>
 
@@ -145,12 +149,14 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     --mx: var(--d-mx);
     --my: var(--d-my);
     --moon: var(--d-moon);
-    /* 스크롤 길이: 화면 높이 × travel. 기준값은 apps/web/README.md "스크롤 속도" */
-    --travel: 2.8;
+    --detail: var(--d-detail);
     position: relative;
+    /* 스크롤 길이: 화면 높이 × travel. 달→로고 구간은 PR #7에서 맞춘 길이(2.8) 그대로, 뒤에 구름 구간 1.0을 더했다.
+       기준값은 apps/web/README.md "스크롤 속도" */
+    --travel: 3.8;
     height: calc(100vh * (var(--travel) + 1));
     height: calc(100svh * (var(--travel) + 1));
-    background: var(--color-brand-night);
+    background: var(--bg);
   }
   @media (max-aspect-ratio: 3/4) {
     .intro {
@@ -158,26 +164,9 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
       --mx: var(--m-mx);
       --my: var(--m-my);
       --moon: var(--m-moon);
-      --travel: 2.4;
+      --detail: var(--m-detail);
+      --travel: 3.3;
     }
-  }
-  .intro-snap {
-    position: absolute;
-    left: 0;
-    top: calc(100svh * var(--travel) * 0.88);
-    width: 1px;
-    height: 1px;
-    scroll-snap-align: start;
-    pointer-events: none;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    :global(html.js:has(.intro:not(.is-static) .intro-snap)) {
-      scroll-snap-type: y proximity;
-    }
-  }
-  .intro.is-static .intro-snap,
-  :global(html:not(.js)) .intro-snap {
-    display: none;
   }
 
   .intro-stage {
@@ -187,7 +176,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     height: 100svh;
     overflow: hidden;
     container-type: size;
-    background: var(--color-brand-night);
+    background: var(--bg);
   }
 
   /* "cover"처럼 깔되 transform-origin을 달 중심에 둔다 → 화면 비율이 달라도 달이 같은 자리에 있다 */
@@ -209,14 +198,6 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     height: 100%;
     display: block;
     user-select: none;
-  }
-  .intro {
-    --detail: var(--d-detail);
-  }
-  @media (max-aspect-ratio: 3/4) {
-    .intro {
-      --detail: var(--m-detail);
-    }
   }
   /* 고해상도 달: 사진의 달과 같은 중심·크기에 겹치고, 가장자리는 부드럽게 사라진다 */
   .moon-detail img {
@@ -266,7 +247,6 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     border-radius: 50%;
     transform: translate(-50%, -50%);
     background: radial-gradient(circle at 42% 38%, #fffdf6 0%, #f1ecdf 55%, #d9d2c2 100%);
-    box-shadow: 0 0 60px 10px #efeaff40;
   }
   .fake-city {
     position: absolute;
@@ -278,19 +258,84 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     fill: #07060b;
   }
 
-  /* 달 둘레만 남기고 어두워지는 막(가운데 구멍 크기는 intro.ts가 달 크기로 정함) */
+  /* 화면 전체를 덮는 막들. opacity만 바뀐다. */
   .intro-ring,
-  .intro-dark {
+  .intro-dark,
+  .intro-curtain {
     position: absolute;
     inset: 0;
     opacity: 0;
     pointer-events: none;
     will-change: opacity;
-    background: radial-gradient(ellipse at 50% 46%, #3a3a60 0%, #0e0d14 72%);
   }
+  /* 가운데가 살짝 밝은 중립 회색 → 가장자리 바탕색. 보라 기운 없이 로고만 색을 가진다. */
+  .intro-ring,
+  .intro-dark {
+    background: radial-gradient(ellipse at 50% 46%, var(--surface-1) 0%, var(--bg) 72%);
+  }
+  /* 가운데 구멍 크기는 intro.ts가 달 크기로 정한다 */
   .intro-ring {
     -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole, 120px) * 0.92), #000 calc(var(--hole, 120px) * 1.6));
     mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole, 120px) * 0.92), #000 calc(var(--hole, 120px) * 1.6));
+  }
+  /* 구름 틈새를 채워 가운데 밝은 회색을 바탕색으로 수렴시킨다(이음새 방지) */
+  .intro-curtain {
+    background: var(--bg);
+  }
+  /* 쌓는 순서: 로고·제목(1) 위로 바탕색 막(2)·구름(3)·아래 어둠(4)이 덮는다 → 구름이 닫히며 로고를 가린다
+     (사용자 요청 2026-10-30 "구름 뒤로 로고가 숨었으면"). 안내 문구(5)는 맨 위. */
+  .intro-content {
+    z-index: 1;
+  }
+  .intro-curtain {
+    z-index: 2;
+  }
+  .intro-cloud {
+    z-index: 3;
+  }
+  .intro-fade {
+    z-index: 4;
+  }
+  .intro-hint {
+    z-index: 5;
+  }
+
+  /* 구름: 위 구름은 오른쪽 위에, 아래 구름은 가운데 아래에 붙는다. 세로 화면에서도 각각 화면 높이의 66%를 덮는다.
+     이동은 자기 크기 기준 %(translate)라 화면 크기와 무관하게 "화면 밖 → 제자리"가 된다. */
+  /* 구름(약 330KB)은 첫 화면 로딩과 겹치지 않게 처음엔 그리지 않는다(lazy + display:none이면 내려받지도 않음).
+     intro.ts가 페이지 로드가 끝난 뒤 .has-clouds를 붙이고, 정적 화면에서는 바로 보인다. */
+  .intro-cloud {
+    display: none;
+    position: absolute;
+    height: auto;
+    max-width: none;
+    pointer-events: none;
+    user-select: none;
+    will-change: transform;
+  }
+  .intro-cloud-top {
+    top: 0;
+    right: 0;
+    width: max(125cqw, 66cqh * 2);
+    transform: translate3d(8%, -102%, 0);
+  }
+  .intro-cloud-bottom {
+    bottom: 0;
+    left: 50%;
+    width: max(112cqw, 66cqh * 1.8);
+    transform: translate3d(-56%, 102%, 0);
+  }
+  /* 무대 아래쪽 22%를 바탕색으로 서서히 어둡게 → 다음 섹션의 맨 윗줄과 같은 색 */
+  .intro-fade {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 22%;
+    background: linear-gradient(to bottom, transparent, var(--bg));
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity;
   }
 
   .intro-content {
@@ -304,13 +349,14 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     gap: 36px;
     padding: 24px;
     text-align: center;
-    color: #fff;
-    will-change: transform;
+    color: var(--text);
+    will-change: transform, opacity;
   }
   @media (max-width: 767px) {
     .intro-content {
       --logo: min(27vw, 130px);
       gap: 28px;
+      padding: 16px;
     }
   }
   .lockup {
@@ -343,7 +389,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     display: block;
     font-size: calc(var(--logo) * 0.5);
     line-height: 1;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: 0.06em;
     background: linear-gradient(100deg, #efeaff 0%, #907fdf 60%, #8577d6 100%);
     -webkit-background-clip: text;
@@ -363,7 +409,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     line-height: 20px;
     font-weight: 600;
     letter-spacing: 0.18em;
-    color: var(--color-brand-lavender);
+    color: var(--text-2);
   }
   h1 {
     margin: 0;
@@ -371,9 +417,6 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     line-height: 1.15;
     font-weight: 700;
     letter-spacing: -0.02em;
-  }
-  h1 span {
-    color: var(--color-brand-lavender);
   }
   .intro-hint {
     position: absolute;
@@ -386,8 +429,8 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     gap: 6px;
     font-size: 15px;
     line-height: 20px;
-    color: #ffffffcc;
-    text-shadow: 0 1px 8px #0e0d14;
+    color: var(--text);
+    text-shadow: 0 1px 8px var(--bg);
     will-change: opacity;
   }
   @media (max-width: 767px) {
@@ -397,7 +440,8 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     }
   }
 
-  /* 정적 최종 화면: 움직임 줄이기 설정, JS 꺼짐, GSAP 로드 실패 */
+  /* 정적 화면: 움직임 줄이기 설정, JS 꺼짐, GSAP 로드 실패.
+     어두운 배경 위 로고 + 제목, 구름이 반쯤(진행도 약 45%) 걸친 장식(로고는 구름 위). */
   .intro.is-static,
   :global(html:not(.js)) .intro {
     height: 100vh;
@@ -407,18 +451,33 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
   :global(html:not(.js)) .intro :is(.intro-layer, .intro-ring, .intro-hint) {
     display: none;
   }
-  .intro.is-static :is(.intro-dark, .lockup-logo-inner, .wordmark, .intro-title),
-  :global(html:not(.js)) .intro :is(.intro-dark, .lockup-logo-inner, .wordmark, .intro-title) {
+  .intro.is-static :is(.intro-dark, .lockup-logo-inner, .wordmark, .intro-title, .intro-fade),
+  :global(html:not(.js)) .intro :is(.intro-dark, .lockup-logo-inner, .wordmark, .intro-title, .intro-fade) {
     opacity: 1;
     transform: none;
+  }
+  /* 정적 화면은 한 장의 장면이라 로고·제목이 구름 위에 보여야 한다 */
+  .intro.is-static .intro-content,
+  :global(html:not(.js)) .intro .intro-content {
+    z-index: 5;
+  }
+  .intro.has-clouds .intro-cloud,
+  .intro.is-static .intro-cloud,
+  :global(html:not(.js)) .intro .intro-cloud {
+    display: block;
+  }
+  .intro.is-static .intro-cloud-top,
+  :global(html:not(.js)) .intro .intro-cloud-top {
+    transform: translate3d(4.4%, -56%, 0);
+  }
+  .intro.is-static .intro-cloud-bottom,
+  :global(html:not(.js)) .intro .intro-cloud-bottom {
+    transform: translate3d(-53.3%, 56%, 0);
   }
   @media (prefers-reduced-motion: reduce) {
     .intro {
       height: 100vh;
       height: 100svh;
-    }
-    .intro-snap {
-      display: none;
     }
     .intro-layer,
     .intro-ring,
@@ -428,9 +487,22 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     .intro-dark,
     .lockup-logo-inner,
     .wordmark,
-    .intro-title {
+    .intro-title,
+    .intro-fade {
       opacity: 1;
       transform: none;
+    }
+    .intro-cloud {
+      display: block;
+    }
+    .intro-content {
+      z-index: 5;
+    }
+    .intro-cloud-top {
+      transform: translate3d(4.4%, -56%, 0);
+    }
+    .intro-cloud-bottom {
+      transform: translate3d(-53.3%, 56%, 0);
     }
   }
 </style>

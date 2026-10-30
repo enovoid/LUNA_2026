@@ -41,9 +41,6 @@ const { faqs, openFirst = 0, idPrefix = 'faq' } = Astro.props;
     padding: 0 20px;
     scroll-margin-top: 96px;
   }
-  details + details {
-    box-shadow: inset 0 1px 0 var(--color-separator);
-  }
   summary {
     display: flex;
     align-items: center;
@@ -86,7 +83,7 @@ const { faqs, openFirst = 0, idPrefix = 'faq' } = Astro.props;
     transform: rotate(90deg);
   }
   details:target {
-    background: var(--color-lavender-tint);
+    background: var(--surface-2);
   }
   @media (prefers-reduced-motion: no-preference) {
     details::details-content {

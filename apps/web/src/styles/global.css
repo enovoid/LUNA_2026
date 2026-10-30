@@ -15,30 +15,57 @@
   --color-brand-ink: #3a3a60;
   --color-brand-night: #0e0d14;
   --color-moonlight: #efeaff;
-  --color-lavender-tint: #907fdf26;
-  /* 어두운 배경 위 강조 글자(링크·선택 상태). 라벤더를 밝힌 값으로 카드 위에서도 4.5:1 이상(8.2:1). */
-  --color-accent: #b4a8f0;
+  --color-lavender-tint: var(--accent-soft);
+  /* 강조 글자(링크·선택 상태). 바이올렛(#524b9b)은 글자색으로 쓰지 않는다(배경 전용). */
+  --color-accent: var(--accent-text);
+  --color-on-accent: var(--on-accent);
 
-  /* 디자인 시스템 토큰(의미 이름) */
-  /* 사이트 전체를 인트로의 밤하늘 톤으로 맞춘다. 디자인 시스템 dark 값 위에 배경만 브랜드 밤색으로 바꿨다. */
-  --color-bg: var(--color-brand-night);
-  --color-card: #1a1826;
-  --color-card-2: #242135;
-  --color-label: var(--labels-primary);
-  /* labels-secondary(dark, 70%)는 카드 위 7.8:1 */
-  --color-label-2: var(--labels-secondary);
+  /* 면 계층: 바탕 → 카드 → 올라온 면. 테두리·그림자 없이 면의 밝기 차이로만 구분한다. */
+  --color-bg: var(--bg);
+  --color-card: var(--surface-1);
+  --color-card-2: var(--surface-2);
+  --color-label: var(--text);
+  --color-label-2: var(--text-2);
   --color-fill-3: var(--fills-tertiary);
   --color-fill-4: var(--fills-quaternary);
   --color-separator: var(--separators-non-opaque);
 
   --radius-pill: var(--radius-pill);
   --radius-card: 26px;
-  --radius-panel: var(--radius-glass-medium);
+  --radius-panel: 34px;
+}
+
+/* 다크 토큰. Apple 다크 모드의 원리를 따른다(근거: docs/design-references.md "다크 모드 색").
+   - 바탕은 색이 없는 회색. 보라 기운을 뺀다(색은 강조에만). 순수 검정 대신 Apple의 올라온 바탕(#1C1C1E)부터 시작해
+     글자 번짐(halation)을 줄이고, 위로 올라올수록 밝아지는 면 계층(#1C1C1E → #2C2C2E → #3A3A3C)으로 깊이를 만든다.
+   - 글자는 흰색과 그 투명도 단계(보조 70%). 투명도라 어느 면 위에서도 같은 위계로 보인다.
+   - 브랜드 라벤더는 하나뿐인 강조색으로, 누를 수 있는 것(주 버튼·링크·선택 상태)에만 쓴다. 어두운 바탕 위 글자는
+     Apple이 다크 모드에서 강조색을 밝히듯 한 단계 밝힌 값(--accent-text)을 쓴다.
+   대비(측정값)는 apps/web/README.md "색 대비" 참고. */
+:root.theme-dark,
+[data-theme="dark"] {
+  --bg: #1c1c1e; /* 페이지 바탕 = 인트로 마지막 배경 (Apple secondarySystemBackground dark) */
+  --surface-1: #2c2c2e; /* 카드·패널 (tertiarySystemBackground dark) */
+  --surface-2: #3a3a3c; /* 올라온 면: hover, 칩 바탕 (systemGray5 dark) */
+  /* 다크 최종안의 1px 테두리 값. 사용자 결정(2026-10-30, "모든 요소에 보더는 없애서")으로 지금은 어디에도 쓰지 않는다. */
+  --border: rgb(255 255 255 / 0.08);
+  --text: #f5f5f7;
+  /* 보조 글자. Apple secondaryLabel(60%)보다 진한 70%: 한글 본문은 획이 많아 60%에서 읽기 힘들다는 피드백 */
+  --text-2: rgb(235 235 245 / 0.7);
+  --accent: #907fdf; /* 채움(주 버튼·1위 배지) */
+  --accent-text: #b4a8f0; /* 어두운 면 위 강조 글자(링크·선택 상태) */
+  --on-accent: #0e0d14;
+  --accent-soft: rgb(144 127 223 / 0.2); /* 선택된 탭 바탕 */
+  --accent-on-soft: var(--accent-text);
+  /* 사진·유리 위에 얹는 반투명 흰 채움(보조 버튼, 내비 알약, 호버) */
+  --fill-1: rgb(255 255 255 / 0.12);
+  --fill-1-hover: rgb(255 255 255 / 0.18);
+  --fill-2: rgb(255 255 255 / 0.08);
+  --backgrounds-grouped-primary: var(--bg);
+  --backgrounds-grouped-secondary: var(--surface-1);
 }
 
 :root {
-  color-scheme: dark;
-
   /* 모션(Apple HIG). SwiftUI 스프링(response·bounce)을 CSS linear()로 옮긴 값. 지속시간은 스프링이 멈추는 시간.
      smooth: 바운스 없음, 화면 전환·등장 / snappy: 살짝 탄력, 누름·선택 / bouncy: 강조 한 번 */
   --spring-smooth: linear(
@@ -157,14 +184,19 @@
 }
 
 @layer base {
+  /* 글자색은 html에서 한 번만 정하고 아래는 상속한다(요소마다 하드코딩하지 않는다). */
   html {
+    color-scheme: dark;
+    background: var(--bg);
+    color: var(--text);
     -webkit-text-size-adjust: 100%;
+    /* 누름 반응은 :active 축소로 보여 주므로 iOS 기본 회색 탭 강조는 끈다 */
+    -webkit-tap-highlight-color: transparent;
     scroll-padding-top: 88px;
   }
   body {
     margin: 0;
-    background: var(--color-bg);
-    color: var(--color-label);
+    background: var(--bg);
     font-family: var(--font-sans);
     word-break: keep-all;
     overflow-wrap: anywhere;
@@ -233,16 +265,13 @@
     font-size: 16px;
   }
   .btn-primary {
-    background: var(--color-brand-lavender);
-    color: var(--color-brand-night);
+    background: var(--accent);
+    color: var(--on-accent);
   }
-  .btn-ghost {
-    background: #ffffff1f;
-    color: var(--color-label);
-  }
+  .btn-ghost,
   .btn-bordered {
-    background: var(--color-fill-3);
-    color: var(--color-label);
+    background: var(--fill-1);
+    color: var(--text);
   }
 
   .chip {
@@ -251,36 +280,53 @@
     gap: 6px;
     padding: 3px 10px;
     border-radius: 1000px;
-    background: var(--color-fill-3);
     font-size: 13px;
     line-height: 18px;
     font-weight: 600;
-    color: var(--color-label);
+    background: var(--surface-2);
+    color: var(--text);
   }
-  .chip-brand {
-    background: var(--color-lavender-tint);
-    color: var(--color-accent);
+  /* 강조가 아닌 정보(연도 등)는 보조 글자 */
+  .chip-plain {
+    color: var(--text-2);
+  }
+  /* 1위·대상 같은 강조 배지만 꽉 찬 라벤더 */
+  .chip-strong {
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
+  /* 카드: 바탕보다 한 단계 밝은 면. 테두리·그림자 없음 */
   .card {
     border-radius: 26px;
-    background: var(--color-card);
-    box-shadow: inset 0 0 0 0.5px #ffffff14;
+    background: var(--surface-1);
   }
 
-  /* 유리 재질(Liquid Glass 근사) */
+  /* 유리 재질(Liquid Glass 근사): 옅은 틴트 + 위쪽이 살짝 밝은 광택 + 강한 흐림. 테두리·바깥 그림자 없음,
+     위쪽 안쪽 하이라이트만 둔다(유리 가장자리의 반사). */
   .glass {
-    background: #1a1826d9;
-    -webkit-backdrop-filter: blur(16px) saturate(1.6);
-    backdrop-filter: blur(16px) saturate(1.6);
-    box-shadow: var(--shadow-glass-small);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.03) 60%),
+      rgb(28 28 30 / 0.42);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8) brightness(1.08);
+    backdrop-filter: blur(24px) saturate(1.8) brightness(1.08);
+    box-shadow:
+      inset 0 1px 1.5px -0.5px rgb(255 255 255 / 0.35),
+      inset 0 -8px 16px -12px rgb(255 255 255 / 0.12);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass {
+      background: var(--surface-1);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
   }
 
   /* 이미지 자리: 사진이 오기 전·실패했을 때 같은 크기를 유지한다(CLS 0) */
   .media {
     position: relative;
     overflow: hidden;
-    background: var(--color-fill-3);
+    background: var(--surface-2);
   }
   .media > img {
     position: absolute;
@@ -308,6 +354,12 @@
   .media[data-failed] > .media-fallback {
     visibility: visible;
   }
+}
+
+/* 긴 목록(멤버 기수별, 수상 연도별)은 화면 밖 묶음의 그리기를 미룬다. 크기는 한 번 그려진 뒤 기억한다(auto). */
+[data-filter-group] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
 }
 
 /* 누름 반응(HIG: 즉각적인 피드백). 누르는 동안 살짝 작아지고, 떼면 snappy 스프링으로 돌아온다. */

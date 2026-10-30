@@ -31,14 +31,14 @@ const { source } = await loadSiteData();
 ---
 
 <!doctype html>
-<html lang="ko" class="theme-dark">
+<html lang="ko" data-theme="dark" class="theme-dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
-    <meta name="theme-color" content="#0e0d14" />
+    <meta name="theme-color" content="#1c1c1e" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="루나 LUNA" />
@@ -65,9 +65,13 @@ const { source } = await loadSiteData();
     </main>
     <Footer dataSource={source} />
     <TabBar current={current} />
+    <div class="moonlight" data-moonlight aria-hidden="true"></div>
     <script>
       import "../scripts/reveal";
       import "../scripts/header-bar";
+      import "../scripts/moonlight";
+      // iOS Safari는 문서에 touchstart 리스너가 있어야 터치 중에 :active가 걸린다(누름 반응). 스크롤은 막지 않는다.
+      document.addEventListener("touchstart", () => {}, { passive: true });
     </script>
   </body>
 </html>
@@ -79,6 +83,42 @@ const { source } = await loadSiteData();
   }
   #main:focus {
     outline: none;
+  }
+
+  /* 마우스 달빛(scripts/moonlight.ts). 화면 위에 얹힌 옅은 빛 한 장이라 아래 글자를 가리지 않고(가장 밝은 곳 7%)
+     클릭도 통과시킨다. 헤더(30)·탭 바(40) 아래, 본문 위. */
+  .moonlight {
+    position: fixed;
+    left: -360px;
+    top: -360px;
+    z-index: 20;
+    width: 720px;
+    height: 720px;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      rgb(255 255 255 / 0.07),
+      rgb(255 255 255 / 0.03) 45%,
+      transparent
+    );
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    will-change: transform;
+    contain: strict;
+  }
+  .moonlight.is-on {
+    opacity: 1;
+  }
+  @media not ((hover: hover) and (pointer: fine)) {
+    .moonlight {
+      display: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .moonlight {
+      display: none;
+    }
   }
   .skip-link {
     position: fixed;

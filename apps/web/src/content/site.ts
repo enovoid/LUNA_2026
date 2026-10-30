@@ -66,11 +66,17 @@ export const site = {
     },
     /** 모바일 에셋으로 바꾸는 기준 */
     mobileMedia: '(max-aspect-ratio: 3/4)',
+    /** 데스크톱·모바일 공용 구름(투명 배경). 로고와 제목이 다 나온 뒤 위·아래에서 닫히며 로고를 덮는다. */
+    clouds: {
+      top: { src: '/intro/intro-cloud-top.webp', width: 1717, height: 860 },
+      bottom: { src: '/intro/intro-cloud-bottom.webp', width: 1717, height: 956 },
+    },
   } satisfies {
     usePhotos: boolean;
     desktop: IntroSceneVariant;
     mobile: IntroSceneVariant;
     mobileMedia: string;
+    clouds: Record<'top' | 'bottom', { src: string; width: number; height: number }>;
   },
 } as const;
 

@@ -8,7 +8,8 @@ export default defineConfig({
   site,
   output: 'static',
   trailingSlash: 'never',
-  build: { format: 'file', inlineStylesheets: 'auto' },
+  // CSS를 HTML에 넣어 첫 화면을 막는 요청 왕복을 하나 없앤다(압축 후 약 19KB, 모바일 FCP 개선).
+  build: { format: 'file', inlineStylesheets: 'always' },
   vite: { plugins: [tailwindcss()] },
   // 빌드 때 읽는 환경 변수. 타입이 생기고 값이 형식에 안 맞으면 빌드가 시작 전에 멈춘다(astro:env).
   // SITE_URL은 설정 파일 안에서 쓰여 astro:env로 읽을 수 없으므로 위에서 process.env로 읽는다.
