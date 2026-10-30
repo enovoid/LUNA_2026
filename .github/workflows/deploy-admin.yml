@@ -1,0 +1,40 @@
+name: Deploy admin
+
+# 관리자 Worker(apps/admin)는 코드가 바뀔 때만 배포한다. 콘텐츠 변경(repository_dispatch)과는 상관없다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/admin/**
+      - packages/db/**
+      - pnpm-lock.yaml
+      - .github/workflows/deploy-admin.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-admin
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @luna/admin typecheck
+      - run: pnpm --filter @luna/admin test
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/admin
+          command: deploy
