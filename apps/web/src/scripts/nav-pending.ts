@@ -3,6 +3,7 @@
 // 탭 선택을 먼저 옮기고, 도착할 페이지 모양의 스켈레톤을 본문 자리에 덮는다.
 // 새 페이지가 오면 브라우저가 문서를 바꾸며 View Transition 크로스페이드로 스켈레톤 → 실제 내용으로 넘어간다.
 // 스켈레톤 상자 크기는 실제 페이지의 격자·비율과 같게 잡아 바뀔 때 내용이 튀지 않게 한다.
+// 제목은 미리 아는 글자라 그대로 쓰고, 필터·기수 탭 같은 내비게이션은 회색 상자로 그리지 않고 자리만 비워 둔다.
 
 type Shape = 'home' | 'members' | 'projects' | 'awards' | 'faq';
 
@@ -21,10 +22,11 @@ const GIVE_UP = 20_000;
 const bar = (w: string, h = 16) => `<span class="sk" style="width:${w};height:${h}px"></span>`;
 const repeat = (n: number, html: string) => html.repeat(n);
 
-const head = (filter: boolean) =>
-  `<div class="sk-head container-page"><div class="sk-head-text">${bar('9ch', 44)}${bar('min(28ch, 80%)', 20)}</div>${
-    filter ? bar('min(320px, 100%)', 36) : ''
-  }</div>`;
+/** 내비게이션이 올 자리. 높이만 차지하고 아무것도 그리지 않는다. */
+const space = (h: number, w = '100%') => `<span class="sk-space" style="width:${w};height:${h}px"></span>`;
+
+const head = (title: string, filter: boolean) =>
+  `<div class="sk-head container-page"><h1 class="sk-title">${title}</h1>${filter ? space(36, 'min(320px, 100%)') : ''}</div>`;
 
 const card = (ratio: string) =>
   `<div class="sk-card"><span class="sk" style="aspect-ratio:${ratio}"></span><div class="sk-card-text">${bar('60%', 18)}${bar('40%', 14)}</div></div>`;
@@ -32,13 +34,13 @@ const card = (ratio: string) =>
 const templates: Record<Shape, () => string> = {
   home: () => '<div class="sk-hero"><span class="sk sk-moon"></span></div>',
   members: () =>
-    `${head(true)}<div class="container-page sk-body">${bar('6ch', 24)}<div class="sk-grid sk-grid-members">${repeat(8, card('1 / 1'))}</div></div>`,
+    `${head('멤버', false)}<div class="container-page sk-body">${space(44)}${bar('6ch', 24)}<div class="sk-grid sk-grid-members">${repeat(8, card('1 / 1'))}</div></div>`,
   projects: () =>
-    `${head(true)}<div class="container-page sk-body"><div class="sk-grid sk-grid-projects">${repeat(6, card('16 / 9'))}</div></div>`,
+    `${head('프로젝트', true)}<div class="container-page sk-body"><div class="sk-grid sk-grid-projects">${repeat(6, card('16 / 9'))}</div></div>`,
   awards: () =>
-    `${head(true)}<div class="container-page sk-body">${bar('5ch', 24)}<div class="sk-list">${repeat(5, '<span class="sk sk-row" style="height:88px"></span>')}</div></div>`,
+    `${head('수상', true)}<div class="container-page sk-body">${bar('5ch', 24)}<div class="sk-list">${repeat(5, '<span class="sk sk-row" style="height:88px"></span>')}</div></div>`,
   faq: () =>
-    `${head(false)}<div class="container-page sk-body"><div class="sk-list">${repeat(6, '<span class="sk sk-row" style="height:64px"></span>')}</div></div>`,
+    `${head('자주 묻는 질문', false)}<div class="container-page sk-body"><div class="sk-list">${repeat(6, '<span class="sk sk-row" style="height:64px"></span>')}</div></div>`,
 };
 
 let timer = 0;
