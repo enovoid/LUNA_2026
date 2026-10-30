@@ -1,0 +1,158 @@
+---
+import type { Project } from '../lib/data';
+import Picture from './Picture.astro';
+
+interface Props {
+  project: Project;
+  /** 홈 미리보기용 작은 카드 */
+  compact?: boolean;
+  headingLevel?: 2 | 3;
+}
+const { project, compact = false, headingLevel = 2 } = Astro.props;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+---
+
+{
+  compact ? (
+    <article class="project-compact card">
+      <div class="pc-head">
+        <Picture image={project.image} alt={`${project.name} 로고`} ratio="1 / 1" sizes="56px" fit="contain" class="pc-logo" />
+        <div class="pc-title">
+          <Heading>{project.name}</Heading>
+          {project.year && <span class="pc-year">{project.year}</span>}
+        </div>
+      </div>
+      {project.description && <p class="pc-desc">{project.description}</p>}
+      {project.awardNames[0] && <span class="chip chip-brand pc-award">{project.awardNames[0]}</span>}
+    </article>
+  ) : (
+    <article class="project card">
+      <div class="project-cover">
+        <Picture image={project.image} alt={`${project.name} 로고`} ratio="1 / 1" sizes="96px" fit="contain" class="project-logo" />
+      </div>
+      <div class="project-body">
+        <div class="project-head">
+          <Heading>{project.name}</Heading>
+          {project.year && <span class="chip">{project.year}</span>}
+        </div>
+        {project.description && <p class="project-desc">{project.description}</p>}
+        {project.awardNames.length > 0 && (
+          <ul class="project-awards" aria-label="수상">
+            {project.awardNames.map((name) => (
+              <li class="chip">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 12.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM7 11.5 6 17.5l4-2 4 2-1-6" />
+                </svg>
+                {name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </article>
+  )
+}
+
+<style>
+  /* 홈 미리보기 */
+  .project-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+    height: 100%;
+  }
+  .pc-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .pc-head :global(.pc-logo) {
+    width: 56px;
+    flex: 0 0 56px;
+    border-radius: 14px;
+  }
+  .pc-title {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .pc-title :is(h2, h3) {
+    margin: 0;
+    font-size: 20px;
+    line-height: 25px;
+    font-weight: 600;
+  }
+  .pc-year {
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--color-label-2);
+  }
+  .pc-desc {
+    margin: 0;
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--color-label-2);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pc-award {
+    align-self: flex-start;
+    margin-top: auto;
+  }
+
+  /* 목록 카드 */
+  .project {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .project-cover {
+    aspect-ratio: 16 / 9;
+    display: grid;
+    place-items: center;
+    background: var(--color-fill-4);
+  }
+  .project-cover :global(.project-logo) {
+    width: 96px;
+    border-radius: 22px;
+  }
+  .project-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px;
+  }
+  .project-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .project-head :is(h2, h3) {
+    margin: 0;
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+  }
+  .project-desc {
+    margin: 0;
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--color-label-2);
+    white-space: pre-line;
+  }
+  .project-awards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 4px 0 0;
+    list-style: none;
+  }
+  .project-awards .chip {
+    padding: 6px 12px;
+  }
+</style>

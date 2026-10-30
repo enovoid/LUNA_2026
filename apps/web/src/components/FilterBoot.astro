@@ -1,0 +1,21 @@
+---
+// 필터 목록 맨 뒤에 둔다. 섬(React)이 깨어나기 전, 첫 페인트 전에 URL 쿼리대로 카드를 숨긴다.
+// 규칙은 lib/filter-dom.ts의 applyFilter와 같다.
+interface Props {
+  param: string;
+}
+const { param } = Astro.props;
+---
+
+<script is:inline define:vars={{ param }}>
+  (() => {
+    const value = new URLSearchParams(location.search).get(param);
+    const scope = document.querySelector(`[data-filter-scope="${param}"]`);
+    if (!value || !scope) return;
+    const items = scope.querySelectorAll("[data-filter-item]");
+    if (![...items].some((i) => i.dataset[param] === value)) return;
+    for (const i of items) i.hidden = i.dataset[param] !== value;
+    for (const g of scope.querySelectorAll("[data-filter-group]"))
+      g.hidden = !g.querySelector("[data-filter-item]:not([hidden])");
+  })();
+</script>

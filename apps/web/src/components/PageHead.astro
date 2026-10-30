@@ -1,0 +1,43 @@
+---
+interface Props {
+  title: string;
+  lead: string;
+}
+const { title, lead } = Astro.props;
+---
+
+<div class="page-head container-page">
+  <div class="page-head-text">
+    <h1>{title}</h1>
+    <p>{lead}</p>
+  </div>
+  <slot />
+</div>
+
+<style>
+  .page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding-top: 24px;
+  }
+  .page-head-text {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(34px, 5vw, 48px);
+    line-height: 1.17;
+    font-weight: 700;
+  }
+  p {
+    margin: 0;
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--color-label-2);
+  }
+</style>

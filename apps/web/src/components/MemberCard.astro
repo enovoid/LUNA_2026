@@ -1,0 +1,82 @@
+---
+import { memberAnchor } from '../lib/content';
+import type { Member } from '../lib/data';
+import Picture from './Picture.astro';
+
+interface Props {
+  member: Member;
+}
+const { member } = Astro.props;
+const meta = [member.schoolGeneration, member.className].filter(Boolean).join(' · ');
+---
+
+<article class="member card" id={memberAnchor(member)}>
+  <Picture image={member.image} alt={`${member.name} 프로필 사진`} ratio="1 / 1" sizes="(min-width: 768px) 248px, calc(50vw - 40px)" class="member-photo">
+    <span class="member-initial" aria-hidden="true">{member.name.slice(0, 1)}</span>
+  </Picture>
+  <div class="member-body">
+    <div class="member-head">
+      <h3>{member.name}</h3>
+      {member.position && <span class="chip">{member.position}</span>}
+    </div>
+    {meta && <p class="member-meta">{meta}</p>}
+    {member.description && <p class="member-desc">{member.description}</p>}
+  </div>
+</article>
+
+<style>
+  .member {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    scroll-margin-top: 96px;
+  }
+  .member:target {
+    box-shadow: 0 0 0 2px var(--color-brand-lavender);
+  }
+  .member :global(.member-photo) {
+    border-radius: 20px;
+  }
+  .member-initial {
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--color-brand-violet);
+    opacity: 0.55;
+  }
+  .member-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  .member-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 8px;
+  }
+  h3 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 25px;
+    font-weight: 600;
+  }
+  .member-meta {
+    margin: 0;
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--color-label-2);
+  }
+  .member-desc {
+    margin: 4px 0 0;
+    font-size: 15px;
+    line-height: 20px;
+  }
+  @media (min-width: 768px) {
+    .member {
+      padding: 20px;
+    }
+  }
+</style>

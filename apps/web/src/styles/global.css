@@ -1,0 +1,220 @@
+@import "tailwindcss";
+@import "./tokens.css";
+/* Pretendard: 유니코드 범위별로 나뉜 서브셋 woff2(셀프 호스팅). 화면에 쓰인 글자 범위 파일만 내려받는다.
+   Apple 기기는 앞쪽 시스템 서체가 먼저 잡혀 이 파일을 아예 받지 않는다. */
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+
+@theme inline {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", Pretendard,
+    "Noto Sans KR", system-ui, sans-serif;
+
+  /* 동아리 브랜드 색 */
+  --color-brand-lavender: #907fdf;
+  --color-brand-violet: #524b9b;
+  --color-brand-ink: #3a3a60;
+  --color-brand-night: #0e0d14;
+  --color-moonlight: #efeaff;
+  --color-lavender-tint: #907fdf26;
+
+  /* 디자인 시스템 토큰(의미 이름) */
+  --color-bg: var(--backgrounds-grouped-primary);
+  --color-card: var(--backgrounds-grouped-secondary);
+  --color-label: var(--labels-primary);
+  /* labels-secondary(라이트 3.4:1)는 본문 대비 4.5:1에 못 미쳐, 같은 토큰의 고대비 값(light-ic)을 보조 문구에 쓴다. */
+  --color-label-2: var(--label-secondary-accessible);
+  --color-fill-3: var(--fills-tertiary);
+  --color-fill-4: var(--fills-quaternary);
+  --color-separator: var(--separators-non-opaque);
+
+  --radius-pill: var(--radius-pill);
+  --radius-card: 26px;
+  --radius-panel: var(--radius-glass-medium);
+
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+:root {
+  --label-secondary-accessible: #3c3c43cc;
+  color-scheme: light;
+  /* TODO: 다크 모드(prefers-color-scheme) — tokens.css의 dark 값 연결 */
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 88px;
+  }
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-label);
+    font-family: var(--font-sans);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--color-brand-violet);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-violet);
+    outline-offset: 2px;
+  }
+  .on-dark :focus-visible,
+  .on-dark:focus-visible {
+    outline-color: var(--color-brand-lavender);
+  }
+  img {
+    max-width: 100%;
+  }
+  details > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  details > summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+@layer components {
+  .container-page {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: var(--margin);
+  }
+  @media (min-width: 768px) {
+    .container-page {
+      padding-inline: 24px;
+    }
+  }
+
+  /* 알약형 버튼 */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 50px;
+    padding: 0 24px;
+    border-radius: 1000px;
+    font-size: 17px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      filter 0.15s,
+      opacity 0.15s;
+  }
+  .btn:hover {
+    text-decoration: none;
+    filter: brightness(0.94);
+  }
+  .btn:active {
+    opacity: 0.6;
+  }
+  .btn-sm {
+    height: 44px;
+    padding: 0 20px;
+    font-size: 16px;
+  }
+  .btn-primary {
+    background: var(--color-brand-violet);
+    color: #fff;
+  }
+  .btn-primary-dark {
+    background: var(--color-brand-lavender);
+    color: var(--color-brand-night);
+  }
+  .btn-ghost-dark {
+    background: #ffffff1f;
+    color: #fff;
+  }
+  .btn-bordered {
+    background: var(--color-fill-3);
+    color: var(--color-label);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 1000px;
+    background: var(--color-fill-3);
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+    color: var(--color-label);
+  }
+  .chip-brand {
+    background: var(--color-lavender-tint);
+    color: var(--color-brand-violet);
+  }
+
+  .card {
+    border-radius: 26px;
+    background: var(--color-card);
+  }
+
+  /* 유리 재질(Liquid Glass 근사) */
+  .glass {
+    background: #ffffffc7;
+    -webkit-backdrop-filter: blur(16px) saturate(1.6);
+    backdrop-filter: blur(16px) saturate(1.6);
+    box-shadow: var(--shadow-glass-small);
+  }
+
+  /* 이미지 자리: 사진이 오기 전·실패했을 때 같은 크기를 유지한다(CLS 0) */
+  .media {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-fill-3);
+  }
+  .media > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .media[data-fit="contain"] > img {
+    object-fit: contain;
+  }
+  .media-fallback {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--color-label-2);
+  }
+  .media > img + .media-fallback {
+    visibility: hidden;
+  }
+  .media[data-failed] > img {
+    display: none;
+  }
+  .media[data-failed] > .media-fallback {
+    visibility: visible;
+  }
+}
+
+/* 화면에 들어올 때 아래에서 올라오는 등장 효과. JS가 있을 때만 숨겨 둔다. */
+@media (prefers-reduced-motion: no-preference) {
+  html.js [data-reveal] {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0);
+    transition:
+      opacity 0.7s ease,
+      transform 0.7s var(--ease-out-soft);
+  }
+  html.js [data-reveal].is-revealed {
+    opacity: 1;
+    transform: none;
+  }
+}

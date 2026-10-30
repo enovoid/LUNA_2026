@@ -1,0 +1,83 @@
+---
+import { site } from '../content/site';
+import Logo from './Logo.astro';
+
+interface Props {
+  dataSource: 'db' | 'mock';
+}
+const { dataSource } = Astro.props;
+const links: { label: string; href: string }[] = [];
+if (site.contact.email) links.push({ label: '이메일', href: `mailto:${site.contact.email}` });
+if (site.contact.instagram) links.push({ label: 'Instagram', href: site.contact.instagram });
+if (site.contact.github) links.push({ label: 'GitHub', href: site.contact.github });
+---
+
+<footer class="site-footer">
+  <div class="container-page footer-inner">
+    <span class="footer-brand">
+      <Logo size={20} />
+      LUNA · IT Social Venture{site.foundedYear && ` · Since ${site.foundedYear}`}
+    </span>
+    {
+      links.length > 0 && (
+        <ul class="footer-links">
+          {links.map((l) => (
+            <li>
+              <a href={l.href} rel="noopener">
+                {l.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    {site.photoCredit && <small class="footer-credit">인트로 사진: {site.photoCredit}</small>}
+    {dataSource === "mock" && <small class="footer-mock">목업 데이터로 빌드한 화면입니다(배포용 아님).</small>}
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    padding: 32px 0 120px;
+    box-shadow: inset 0 1px 0 var(--color-separator);
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--color-label-2);
+  }
+  @media (min-width: 768px) {
+    .site-footer {
+      padding-bottom: 48px;
+    }
+  }
+  .footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .footer-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .footer-links {
+    display: flex;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .footer-links a {
+    color: inherit;
+    font-weight: 600;
+  }
+  .footer-credit,
+  .footer-mock {
+    flex-basis: 100%;
+    font-size: 12px;
+  }
+  .footer-mock {
+    color: #b3261e;
+  }
+</style>

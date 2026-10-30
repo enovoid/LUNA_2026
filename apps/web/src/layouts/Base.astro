@@ -1,0 +1,96 @@
+---
+import '../styles/global.css';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import TabBar from '../components/TabBar.astro';
+import { type NavKey, site } from '../content/site';
+import { loadSiteData } from '../lib/data';
+
+interface Props {
+  /** 페이지 제목. 비우면 사이트 기본 제목 */
+  title?: string;
+  description?: string;
+  current: NavKey | null;
+  /** 홈: 헤더를 인트로 위에 겹친다 */
+  overlayHeader?: boolean;
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = site.description,
+  current,
+  overlayHeader = false,
+  noindex = false,
+} = Astro.props;
+const fullTitle = title ? `${title} | 루나 LUNA` : site.title;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL('/og.png', Astro.site);
+const { source } = await loadSiteData();
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    <meta name="theme-color" content={overlayHeader ? "#0e0d14" : "#f2f2f7"} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="루나 LUNA" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="어두운 배경 위의 루나 로고" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- JS가 켜져 있을 때만 등장 효과·인트로 애니메이션 초기 상태를 쓴다(첫 페인트 전에 실행). -->
+    <script is:inline>document.documentElement.classList.add("js");</script>
+    <slot name="head" />
+  </head>
+  <body>
+    <a href="#main" class="skip-link">본문으로 건너뛰기</a>
+    <Header current={current} overlay={overlayHeader} />
+    <slot name="hero" />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer dataSource={source} />
+    <TabBar current={current} />
+    <script>
+      import "../scripts/reveal";
+      import "../scripts/header-tone";
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  html,
+  body {
+    overflow-x: clip;
+  }
+  #main:focus {
+    outline: none;
+  }
+  .skip-link {
+    position: fixed;
+    left: 12px;
+    top: 12px;
+    z-index: 100;
+    padding: 10px 16px;
+    border-radius: 1000px;
+    background: var(--color-brand-violet);
+    color: #fff;
+    font-weight: 600;
+    transform: translate3d(0, -200%, 0);
+  }
+  .skip-link:focus {
+    transform: none;
+  }
+</style>

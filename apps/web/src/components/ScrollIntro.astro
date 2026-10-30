@@ -1,0 +1,407 @@
+---
+// 홈 첫 화면 스크롤 인트로. 밤하늘의 달 → 중간까지 확대 후 멈춤 → 달이 그 자리에서 루나 로고로 바뀜
+// → 로고 곡선 안쪽에서 "LUNA" 글자가 옆으로 나옴 → "세상을 비추는 달, LUNA".
+// 움직임은 transform·opacity만 쓴다(합성 단계에서 처리돼 레이아웃·페인트를 다시 하지 않음).
+// 애니메이션은 scripts/intro.ts(GSAP + ScrollTrigger). reduced-motion·JS 꺼짐·GSAP 로드 실패면 최종 화면을 정적으로 보여 준다.
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { site } from '../content/site';
+import Logo from './Logo.astro';
+
+const { usePhotos, desktop, mobile, mobileMedia } = site.introScene;
+// 달 고해상도 파일이 둘 다 있을 때만 겹친다(없으면 깨진 이미지 대신 원래 사진만 보인다).
+const hasMoonDetail = [desktop.moonDetail, mobile.moonDetail].every((src) =>
+  existsSync(join(process.cwd(), 'public', src)),
+);
+
+const vars = [
+  `--d-aspect:${desktop.aspect}`,
+  `--d-mx:${desktop.moonX}%`,
+  `--d-my:${desktop.moonY}%`,
+  `--d-moon:${desktop.moonDiameter}%`,
+  `--m-aspect:${mobile.aspect}`,
+  `--m-mx:${mobile.moonX}%`,
+  `--m-my:${mobile.moonY}%`,
+  `--m-moon:${mobile.moonDiameter}%`,
+  `--d-detail:${desktop.moonDetailSize}%`,
+  `--m-detail:${mobile.moonDetailSize}%`,
+].join(';');
+
+const config = JSON.stringify({
+  media: mobileMedia,
+  desktop: {
+    mx: desktop.moonX,
+    my: desktop.moonY,
+    moon: desktop.moonDiameter,
+    aspect: desktop.aspect,
+    zoom: desktop.zoom,
+  },
+  mobile: {
+    mx: mobile.moonX,
+    my: mobile.moonY,
+    moon: mobile.moonDiameter,
+    aspect: mobile.aspect,
+    zoom: mobile.zoom,
+  },
+});
+
+// 사진이 없을 때 쓰는 임시 도시 실루엣(같은 좌표계). 빌드마다 같은 모양이 나오도록 고정 난수.
+let seed = 7;
+const rand = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+const buildings = Array.from({ length: 40 }, (_, i) => ({
+  x: i * 2.5,
+  w: 2.6,
+  h: 8 + rand() * 22,
+}));
+const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
+---
+
+<section id="luna-intro" class="intro" data-intro data-config={config} data-tone="dark" style={vars} aria-labelledby="intro-title">
+  <div class="intro-stage">
+    <div class="intro-layer" data-layer="sky" aria-hidden="true">
+      {
+        usePhotos ? (
+          <picture>
+            <source media={mobileMedia} srcset={mobile.sky} width={mobile.width} height={mobile.height} />
+            <img src={desktop.sky} width={desktop.width} height={desktop.height} alt="" fetchpriority="high" decoding="async" draggable="false" />
+          </picture>
+        ) : (
+          <div class="fake-sky">
+            <span class="fake-moon" />
+          </div>
+        )
+      }
+      {
+        usePhotos && hasMoonDetail && (
+          <picture class="moon-detail">
+            <source media={mobileMedia} srcset={mobile.moonDetail} width="1200" height="1200" />
+            <img src={desktop.moonDetail} width="1200" height="1200" alt="" fetchpriority="low" decoding="async" draggable="false" />
+          </picture>
+        )
+      }
+      <div class="intro-glow"></div>
+    </div>
+
+    <div class="intro-layer" data-layer="city" aria-hidden="true">
+      {
+        usePhotos ? (
+          <picture>
+            <source media={mobileMedia} srcset={mobile.city} width={mobile.width} height={mobile.height} />
+            <img src={desktop.city} width={desktop.width} height={desktop.height} alt="" decoding="async" draggable="false" />
+          </picture>
+        ) : (
+          <svg class="fake-city" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {buildings.map((b) => <rect x={b.x} y={100 - b.h} width={b.w} height={b.h} />)}
+          </svg>
+        )
+      }
+    </div>
+
+    <div class="intro-ring" data-layer="ring" aria-hidden="true"></div>
+    <div class="intro-dark" data-layer="dark" aria-hidden="true"></div>
+
+    <div class="intro-content" data-layer="content">
+      <div class="lockup">
+        <div class="lockup-logo" data-measure="logo">
+          <div class="lockup-logo-inner" data-layer="logo">
+            <Logo size="100%" label="루나 로고" />
+          </div>
+        </div>
+        <div class="lockup-window" aria-hidden="true">
+          <span class="wordmark" data-layer="wordmark">LUNA</span>
+        </div>
+      </div>
+      <div class="intro-title" data-layer="title">
+        <p class="intro-eyebrow">IT SOCIAL VENTURE{sinceYear}</p>
+        <h1 id="intro-title">세상을 비추는 달, <span>LUNA</span></h1>
+      </div>
+    </div>
+
+    <div class="intro-hint" data-layer="hint" aria-hidden="true">
+      <span>스크롤해서 달에게 다가가기</span>
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"></path></svg>
+    </div>
+  </div>
+</section>
+
+<noscript>
+  <style>
+    .intro { height: 100vh !important; height: 100svh !important; }
+  </style>
+</noscript>
+
+<script>
+  import "../scripts/intro";
+</script>
+
+<style>
+  .intro {
+    --aspect: var(--d-aspect);
+    --mx: var(--d-mx);
+    --my: var(--d-my);
+    --moon: var(--d-moon);
+    position: relative;
+    height: 400vh;
+    height: 400svh;
+    background: var(--color-brand-night);
+  }
+  @media (max-aspect-ratio: 3/4) {
+    .intro {
+      --aspect: var(--m-aspect);
+      --mx: var(--m-mx);
+      --my: var(--m-my);
+      --moon: var(--m-moon);
+    }
+  }
+
+  .intro-stage {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100svh;
+    overflow: hidden;
+    container-type: size;
+    background: var(--color-brand-night);
+  }
+
+  /* "cover"처럼 깔되 transform-origin을 달 중심에 둔다 → 화면 비율이 달라도 달이 같은 자리에 있다 */
+  .intro-layer {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100cqw, 100cqh * var(--aspect));
+    aspect-ratio: var(--aspect);
+    transform-origin: var(--mx) var(--my);
+    transform: translate3d(-50%, -50%, 0);
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+  .intro-layer img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    user-select: none;
+  }
+  .intro {
+    --detail: var(--d-detail);
+  }
+  @media (max-aspect-ratio: 3/4) {
+    .intro {
+      --detail: var(--m-detail);
+    }
+  }
+  /* 고해상도 달: 사진의 달과 같은 중심·크기에 겹치고, 가장자리는 부드럽게 사라진다 */
+  .moon-detail img {
+    position: absolute;
+    inset: auto;
+    left: var(--mx);
+    top: var(--my);
+    width: var(--detail);
+    height: auto;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 86%, transparent 100%);
+  }
+  .intro-glow {
+    position: absolute;
+    left: var(--mx);
+    top: var(--my);
+    width: calc(var(--moon) * 2.6);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    transform: translate3d(-50%, -50%, 0);
+    background: radial-gradient(circle, #efeaffcc 0%, #907fdf55 38%, #907fdf00 70%);
+    opacity: 0;
+    will-change: opacity;
+  }
+
+  /* 사진이 없을 때의 임시 하늘·달·도시(같은 좌표) */
+  .fake-sky {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(1.5px 1.5px at 12% 18%, #fff9 50%, transparent 51%),
+      radial-gradient(1px 1px at 28% 8%, #fff8 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 71% 14%, #fffa 50%, transparent 51%),
+      radial-gradient(1px 1px at 86% 30%, #fff7 50%, transparent 51%),
+      radial-gradient(1px 1px at 38% 36%, #fff6 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 62% 42%, #fff8 50%, transparent 51%),
+      radial-gradient(ellipse at var(--mx) var(--my), #2b2a4a 0%, #14131f 45%, #0e0d14 80%);
+  }
+  .fake-moon {
+    position: absolute;
+    left: var(--mx);
+    top: var(--my);
+    width: var(--moon);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 42% 38%, #fffdf6 0%, #f1ecdf 55%, #d9d2c2 100%);
+    box-shadow: 0 0 60px 10px #efeaff40;
+  }
+  .fake-city {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 45%;
+    fill: #07060b;
+  }
+
+  /* 달 둘레만 남기고 어두워지는 막(가운데 구멍 크기는 intro.ts가 달 크기로 정함) */
+  .intro-ring,
+  .intro-dark {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity;
+    background: radial-gradient(ellipse at 50% 46%, #3a3a60 0%, #0e0d14 72%);
+  }
+  .intro-ring {
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole, 120px) * 0.92), #000 calc(var(--hole, 120px) * 1.6));
+    mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole, 120px) * 0.92), #000 calc(var(--hole, 120px) * 1.6));
+  }
+
+  .intro-content {
+    --logo: min(30vw, 200px);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 36px;
+    padding: 24px;
+    text-align: center;
+    color: #fff;
+    will-change: transform;
+  }
+  @media (max-width: 767px) {
+    .intro-content {
+      --logo: min(27vw, 130px);
+      gap: 28px;
+    }
+  }
+  .lockup {
+    display: flex;
+    align-items: center;
+  }
+  .lockup-logo {
+    position: relative;
+    z-index: 2;
+    width: var(--logo);
+    aspect-ratio: 1;
+    flex: 0 0 auto;
+  }
+  .lockup-logo-inner {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 48px #907fdf66);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  /* 로고 초승달의 안쪽(오른쪽 열린 곳)에서 글자가 미끄러져 나온다. 창 밖은 잘려 보이지 않는다. */
+  .lockup-window {
+    position: relative;
+    z-index: 1;
+    margin-left: calc(var(--logo) * -0.3);
+    padding-left: calc(var(--logo) * 0.36);
+    overflow: hidden;
+  }
+  .wordmark {
+    display: block;
+    font-size: calc(var(--logo) * 0.5);
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    background: linear-gradient(100deg, #efeaff 0%, #907fdf 60%, #8577d6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transform: translate3d(calc(-100% - var(--logo) * 0.5), 0, 0);
+    will-change: transform;
+  }
+  .intro-title {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+    will-change: transform, opacity;
+  }
+  .intro-eyebrow {
+    margin: 0 0 12px;
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: var(--color-brand-lavender);
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(28px, 4.4vw, 56px);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  h1 span {
+    color: var(--color-brand-lavender);
+  }
+  .intro-hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    line-height: 20px;
+    color: #ffffffcc;
+    text-shadow: 0 1px 8px #0e0d14;
+    will-change: opacity;
+  }
+  @media (max-width: 767px) {
+    /* 하단 탭 바와 겹치지 않게 */
+    .intro-hint {
+      bottom: calc(96px + env(safe-area-inset-bottom));
+    }
+  }
+
+  /* 정적 최종 화면: 움직임 줄이기 설정, JS 꺼짐, GSAP 로드 실패 */
+  .intro.is-static,
+  :global(html:not(.js)) .intro {
+    height: 100vh;
+    height: 100svh;
+  }
+  .intro.is-static :is(.intro-layer, .intro-ring, .intro-hint),
+  :global(html:not(.js)) .intro :is(.intro-layer, .intro-ring, .intro-hint) {
+    display: none;
+  }
+  .intro.is-static :is(.intro-dark, .lockup-logo-inner, .wordmark, .intro-title),
+  :global(html:not(.js)) .intro :is(.intro-dark, .lockup-logo-inner, .wordmark, .intro-title) {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .intro {
+      height: 100vh;
+      height: 100svh;
+    }
+    .intro-layer,
+    .intro-ring,
+    .intro-hint {
+      display: none;
+    }
+    .intro-dark,
+    .lockup-logo-inner,
+    .wordmark,
+    .intro-title {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>
