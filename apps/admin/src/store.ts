@@ -1,5 +1,5 @@
-// 관리자 페이지가 읽고 쓰는 Postgres. 공개 사이트는 이 Worker를 거치지 않는다(빌드 때만 DB를 읽음).
-import { siteSettings, syncState } from '@luna/db/schema';
+// 관리자 페이지가 읽고 쓰는 Postgres. 공개 사이트는 이 서버를 거치지 않는다(빌드 때만 DB를 읽음).
+import { members, siteSettings, syncState } from '@luna/db/schema';
 import {
   emptySettings,
   parseSettings,
@@ -29,12 +29,24 @@ export type StoredSettings = { [K in SettingsKey]?: StoredSetting<K> };
 export interface AdminStore {
   syncStates(): Promise<SyncStateRow[]>;
   settings(): Promise<StoredSettings>;
-  saveSetting<K extends SettingsKey>(key: K, value: SettingsByKey[K], email: string): Promise<void>;
+  saveSetting<K extends SettingsKey>(
+    key: K,
+    value: SettingsByKey[K],
+    editor: string,
+  ): Promise<void>;
+  /** 멤버 DB에 있는 루나 기수 번호(예: "LUNA 8기" → 8). 모집 기수 선택지를 만든다. */
+  generations(): Promise<number[]>;
+}
+
+/** "LUNA 8기", "8기", "8" 같은 값에서 기수 번호만 뽑는다. */
+export function generationNumber(value: string | null): number | undefined {
+  const match = value?.match(/(\d+)\s*기?\s*$/);
+  return match ? Number(match[1]) : undefined;
 }
 
 export function createStore(url: string): { store: AdminStore; close: () => Promise<void> } {
-  // Worker 요청 하나에 연결 하나. prepare는 Hyperdrive·프록시와 부딪히지 않게 끈다.
-  const client = postgres(url, { max: 1, prepare: false, fetch_types: false, connect_timeout: 10 });
+  // 운영진 몇 명이 가끔 쓰는 화면이라 연결은 적게 둔다.
+  const client = postgres(url, { max: 3, idle_timeout: 60, connect_timeout: 10 });
   const db = drizzle({ client });
 
   const store: AdminStore = {
@@ -57,15 +69,22 @@ export function createStore(url: string): { store: AdminStore; close: () => Prom
       }
       return result;
     },
-    async saveSetting(key, value, email) {
+    async saveSetting(key, value, editor) {
       const now = new Date();
       await db
         .insert(siteSettings)
-        .values({ key, value, updatedAt: now, updatedBy: email })
+        .values({ key, value, updatedAt: now, updatedBy: editor })
         .onConflictDoUpdate({
           target: siteSettings.key,
-          set: { value, updatedAt: now, updatedBy: email },
+          set: { value, updatedAt: now, updatedBy: editor },
         });
+    },
+    async generations() {
+      const rows = await db.selectDistinct({ generation: members.lunaGeneration }).from(members);
+      const numbers = rows
+        .map((row) => generationNumber(row.generation))
+        .filter((n): n is number => n !== undefined);
+      return [...new Set(numbers)].sort((a, b) => a - b);
     },
   };
 

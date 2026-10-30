@@ -1,7 +1,1 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "types": ["./worker-configuration.d.ts", "node"]
-  },
-  "include": ["src", "test"]
-}
+{ "extends": "../../tsconfig.base.json", "include": ["src", "test"] }

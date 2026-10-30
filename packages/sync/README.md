@@ -1,6 +1,6 @@
 # @luna/sync — Notion → Postgres 동기화
 
-Railway Cron 서비스로 15분마다 돌며, Notion 4개 DB에서 **바뀐 페이지만** 읽어 Postgres에 반영하고, 사진은 WebP로 바꿔 Postgres `image_files`에 넣는다(사이트 빌드가 꺼내 `/img/` 정적 파일로 배포). 바뀐 게 있으면 GitHub `repository_dispatch`(`content-updated`)로 사이트 빌드를 시작한다.
+사이트 서버(`apps/admin`)가 15분마다 자식 프로세스로 실행한다. Notion 4개 DB에서 **바뀐 페이지만** 읽어 Postgres에 반영하고, 사진은 WebP로 바꿔 Postgres `image_files`에 넣는다(사이트 빌드가 꺼내 `/img/` 정적 파일로 내보냄). 바뀐 게 있으면 `SYNC_NOTIFY_FILE`에 파일을 남겨 서버가 사이트를 다시 만들게 한다.
 
 ## 명령
 
@@ -14,7 +14,7 @@ pnpm --filter @luna/sync test
 
 `--dry-run`과 `--check-schema`는 `NOTION_TOKEN`과 `NOTION_DB_*`만 있으면 된다. `DATABASE_URL`이 없으면 첫 실행처럼 전부 새 항목으로 보고 확인한다. 실제 실행에는 `.env.example`의 Notion·DB·GitHub 값이 모두 필요하다.
 
-Railway 설정은 [`railway.json`](railway.json)(config as code)에 있다: Start `pnpm --filter @luna/sync start`, Cron `*/15 * * * *`, 재시작 정책 NEVER(실패하면 다음 15분 실행이 다시 시도하므로 바로 재시작하지 않는다), 빌드 단계는 typecheck. 서비스 Settings의 Railway Config File에 `/packages/sync/railway.json`을 넣는다. 환경 변수는 Railway Variables에서 받는다.
+따로 배포하는 서비스는 없다. 사이트 서버가 `pnpm --filter @luna/sync start`로 실행하며 서버의 환경 변수(Railway Variables)를 그대로 넘긴다. 로컬에서는 `pnpm sync`로 직접 돌릴 수 있다(이때는 빌드 알림 없음).
 
 관리자 페이지의 "지금 다시 동기화"는 같은 명령을 GitHub Actions(`.github/workflows/sync.yml`, `SYNC_TRIGGER=admin`)에서 돌린다. 실행은 시작할 때 `sync_state._running`을 잡고, 다른 실행이 잡고 있으면 아무것도 하지 않고 종료 코드 0으로 끝난다(`--dry-run`은 잠그지 않음).
 
@@ -26,7 +26,7 @@ Railway 설정은 [`railway.json`](railway.json)(config as code)에 있다: Star
 4. **이미지.** 아래 "이미지" 절.
 5. **삭제.** Notion에 살아 있는 페이지 ID 목록(제목 속성만 받아 가볍게)과 DB를 비교해, 사라졌거나 휴지통에 간 페이지를 지운다.
 6. **사진 파일 정리.** 어느 테이블도 쓰지 않는 `image_files` 행을 찾아, 처음 발견하고 유예 시간(기본 120분)이 지나면 지운다. 배포된 사이트는 자기 사본을 갖고 있지만, 진행 중인 빌드가 방금 읽은 행의 사진을 꺼내기 전에 지우지 않기 위해서다.
-7. **빌드 호출.** 추가·수정·삭제가 하나라도 있으면 `repository_dispatch`. 없으면 부르지 않는다.
+7. **빌드 알림.** 추가·수정·삭제가 하나라도 있으면 `SYNC_NOTIFY_FILE`에 파일을 쓴다. 없으면 쓰지 않는다.
 8. **기록.** DB별 결과(추가·수정·그대로·삭제·실패 개수, 올린 이미지 수, 소요 시간)와 오류를 로그와 `sync_state`에 남긴다.
 
 ## 속도 제한
@@ -61,7 +61,7 @@ Notion-Version은 `2026-03-11`(공식 SDK `@notionhq/client` 5.x). 이 버전부
 Node 내장 `fetch`(undici 기반)를 쓴다.
 
 - Node 18부터 `fetch`가 내장되어 있고 Node 26(이 저장소 기준)에서는 안정 기능이다. 2026년 기준 새 Node 프로젝트에서 HTTP 클라이언트 의존성을 따로 두지 않는 쪽이 일반적이다.
-- 여기서 하는 일은 GET 한 번과 POST 한 번(dispatch)뿐이다. axios의 장점(인터셉터, 브라우저·Node 공용 어댑터, 자동 JSON 변환)이 쓰일 데가 없다.
+- 여기서 하는 일은 Notion API 호출과 사진 내려받기뿐이다. axios의 장점(인터셉터, 브라우저·Node 공용 어댑터, 자동 JSON 변환)이 쓰일 데가 없다.
 - 필요한 기능은 내장으로 된다: 타임아웃은 `AbortSignal.timeout()`, 크기 상한은 `response.body` 스트림을 읽으며 검사. 재시도는 어느 쪽이든 직접 짜야 한다(axios도 기본 재시도가 없다).
 - Notion SDK도 내부에서 `fetch`를 쓴다. 같은 클라이언트를 쓰면 프록시·TLS 설정이 한 군데로 모인다.
 - 의존성이 하나 줄어 공급망 위험과 설치 크기가 줄어든다.
@@ -86,7 +86,7 @@ Node 내장 `fetch`(undici 기반)를 쓴다.
 | 조회 결과가 행 수 상한에서 잘림                   | 잘린 목록으로 지우지 않도록 그 DB 실패 처리                                                                | 같은 오류                                                   | (현재 규모에선 일어나지 않음)                        |
 | Notion 목록이 통째로 비어 있는데 DB에는 행이 있음 | 삭제를 건너뛰고 경고. 권한이 빠졌을 때 전부 지워 버리는 사고를 막음                                        | 같은 경고                                                   | 정말 비운 거라면 `pnpm sync --full`                  |
 | 사진 파일 정리 실패                               | 경고만 남기고 계속                                                                                         | 다시 정리                                                   | 없음                                                 |
-| `repository_dispatch` 실패                        | `_dispatch` 상태에 "보류" 기록, 종료 코드 1                                                                | 바뀐 게 없어도 다시 호출                                    | 401·403·404면 토큰 권한·저장소 이름 확인             |
+| 빌드 알림 파일 쓰기 실패                          | `_dispatch` 상태에 "보류" 기록, 종료 코드 1                                                                | 바뀐 게 없어도 다시 알림                                    | 서버 디스크 확인                                     |
 
 종료 코드: **0** 성공, **1** 일부 실패(나머지는 반영됨, 다음 실행에서 다시 시도), **2** 시작하지 못함(사람이 고쳐야 함). Railway 로그와 배포 기록에서 0이 아닌 실행을 실패로 구분할 수 있다.
 

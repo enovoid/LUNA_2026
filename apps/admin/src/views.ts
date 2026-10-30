@@ -1,24 +1,27 @@
 // 관리자 화면. 서버에서 HTML을 다 그리고, 버튼은 일반 폼 전송이라 브라우저 JS가 필요 없다.
 import {
+  RECRUIT_STATUSES,
   type SettingsByKey,
   type SettingsKey,
   settingsFields,
   settingsLabel,
 } from '@luna/db/settings';
-import type { WorkflowRun } from './github.js';
 import { type Html, html, raw } from './html.js';
+import type { JobRun, JobsStatus } from './jobs.js';
 import type { StoredSetting, SyncStateRow } from './store.js';
 
 export type Loaded<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export interface PageModel {
-  viewer: { email: string };
-  siteUrl?: string;
+  viewer: { name: string };
   notice?: Notice;
   sync: Loaded<SyncStateRow[]>;
-  syncRuns: Loaded<WorkflowRun[]>;
-  deployRuns: Loaded<WorkflowRun[]>;
+  jobs: JobsStatus;
+  /** 사이트를 한 번이라도 만들었는지 */
+  siteReady: boolean;
   settings: Loaded<{ [K in SettingsKey]?: StoredSetting<K> }>;
+  /** 멤버 DB에 있는 루나 기수 번호. 모집 기수 선택지를 만든다. */
+  generations: Loaded<number[]>;
   /** 검사에 실패한 폼: 입력한 값을 그대로 다시 보여 준다. */
   rejected?: { key: SettingsKey; input: Record<string, string>; errors: string[] };
   now: Date;
@@ -27,18 +30,13 @@ export interface PageModel {
 export const NOTICES = {
   'sync-started': {
     tone: 'ok',
-    text: '동기화를 시작했어요. 1~3분 뒤 이 페이지를 새로고침하면 결과가 보여요.',
+    text: '동기화를 시작했어요. 1~3분 뒤 새로고침하면 결과가 보여요. 바뀐 게 있으면 사이트도 이어서 다시 만들어요.',
   },
-  'deploy-started': { tone: 'ok', text: '사이트 배포를 시작했어요. 보통 2~3분 걸려요.' },
-  saved: { tone: 'ok', text: '저장했어요. 사이트에 반영하는 배포를 시작했어요(보통 2~3분).' },
-  'saved-deploy-failed': {
-    tone: 'warn',
-    text: '저장은 됐지만 배포를 시작하지 못했어요. 아래 "사이트 다시 배포"를 눌러 주세요.',
+  'build-started': {
+    tone: 'ok',
+    text: '사이트를 다시 만들기 시작했어요. 1~2분 걸리고, 그동안은 이전 사이트가 그대로 보여요.',
   },
-  'github-failed': {
-    tone: 'error',
-    text: 'GitHub Actions를 부르지 못했어요. 잠시 뒤 다시 시도하고, 계속되면 GITHUB_TOKEN 설정을 확인해 주세요.',
-  },
+  saved: { tone: 'ok', text: '저장했어요. 사이트를 다시 만들고 있어요(1~2분 뒤 반영).' },
   'db-failed': {
     tone: 'error',
     text: '데이터베이스에 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.',
@@ -61,7 +59,7 @@ const DATABASE_LABELS: Record<string, string> = {
 const SETTINGS_TITLES: Record<SettingsKey, { title: string; help: string }> = {
   recruit: {
     title: '모집 정보',
-    help: '모집 기수와 지원서 링크가 모두 있어야 사이트에 모집 섹션과 "지원하기" 버튼이 보여요. 모집이 끝나면 칸을 비우고 저장하세요.',
+    help: '모집 기수를 고르면 사이트에 모집 섹션이 보여요. "지원하기" 버튼은 모집 중이고, 지원 기간 안이고, 지원서 링크가 있을 때만 보여요. 마감일이 지나거나 "마감"으로 바꾸면 "모집 마감"으로 바뀌어요(날짜는 매일 0시에 다시 확인). 섹션을 아예 내리려면 "모집 안 함"을 고르세요.',
   },
   contact: {
     title: '연락처·SNS',
@@ -70,8 +68,6 @@ const SETTINGS_TITLES: Record<SettingsKey, { title: string; help: string }> = {
 };
 
 const PLACEHOLDERS: Record<string, string> = {
-  generation: '9기',
-  period: '3월 2일 ~ 3월 15일',
   target: '재학생 누구나',
   applyUrl: 'https://forms.gle/…',
   email: 'luna@example.com',
@@ -79,8 +75,8 @@ const PLACEHOLDERS: Record<string, string> = {
   github: 'https://github.com/…',
 };
 
-export function renderPage(model: PageModel): string {
-  const page = html`<!doctype html>
+function documentHead(): Html {
+  return html`<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -88,15 +84,38 @@ export function renderPage(model: PageModel): string {
 <meta name="robots" content="noindex, nofollow">
 <title>LUNA 관리자</title>
 <style>${raw(STYLE)}</style>
-</head>
+</head>`;
+}
+
+export function renderLoginPage(model: { error?: string; name?: string }): string {
+  return html`${documentHead()}
+<body>
+<main class="wrap login">
+  <section aria-labelledby="login-title">
+    <h1 id="login-title">LUNA 관리자</h1>
+    <p class="help">운영진만 들어올 수 있어요. 이름은 누가 무엇을 바꿨는지 기록에 남아요.</p>
+    ${model.error ? html`<p class="notice error" role="alert">${model.error}</p>` : ''}
+    <form method="post" action="/admin/login" class="fields">
+      <label><span>이름</span><input name="name" value="${model.name ?? ''}" autocomplete="name" maxlength="40" required></label>
+      <label><span>비밀번호</span><input type="password" name="password" autocomplete="current-password" required></label>
+      <div class="actions"><button type="submit">로그인</button></div>
+    </form>
+  </section>
+</main>
+</body>
+</html>`.value;
+}
+
+export function renderPage(model: PageModel): string {
+  const page = html`${documentHead()}
 <body>
 <header class="top">
   <div class="wrap top-inner">
     <strong class="brand">LUNA 관리자</strong>
     <nav>
-      ${model.siteUrl ? html`<a href="${model.siteUrl}" target="_blank" rel="noopener">사이트 열기</a>` : ''}
-      <span class="who">${model.viewer.email}</span>
-      <a href="/cdn-cgi/access/logout">로그아웃</a>
+      <a href="/" target="_blank" rel="noopener">사이트 열기</a>
+      <span class="who">${model.viewer.name}</span>
+      <form method="post" action="/admin/logout" class="inline"><button type="submit" class="link">로그아웃</button></form>
     </nav>
   </div>
 </header>
@@ -104,7 +123,7 @@ export function renderPage(model: PageModel): string {
   ${model.notice ? noticeBox(model.notice) : ''}
   <p class="lead">글과 사진은 Notion에서 고치면 15분 안에 사이트에 반영돼요. 여기서는 Notion에 없는 것만 다뤄요.</p>
   ${syncSection(model)}
-  ${deploySection(model)}
+  ${siteSection(model)}
   ${settingsSection(model, 'recruit')}
   ${settingsSection(model, 'contact')}
 </main>
@@ -135,7 +154,7 @@ function syncSection(model: PageModel): Html {
   }
   ${
     pendingDispatch
-      ? html`<p class="notice warn">동기화 뒤 사이트 빌드 호출이 실패해 다음 동기화 때 다시 불러요. ${dispatch?.lastError ?? ''}</p>`
+      ? html`<p class="notice warn">동기화 뒤 사이트 다시 만들기 요청이 실패해 다음 동기화 때 다시 요청해요. ${dispatch?.lastError ?? ''}</p>`
       : ''
   }
   ${
@@ -150,8 +169,7 @@ function syncSection(model: PageModel): Html {
     <label class="check"><input type="checkbox" name="full" value="1"> 전체 다시 반영(--full, 오래 걸려요)</label>
     <button type="submit">지금 다시 동기화</button>
   </form>
-  <p class="help">Notion에서 고친 내용을 15분 기다리지 않고 바로 가져와요. 바뀐 게 있으면 사이트 배포까지 이어져요.</p>
-  ${runList('최근 수동 동기화', model.syncRuns)}
+  <p class="help">Notion에서 고친 내용을 15분 기다리지 않고 바로 가져와요. 바뀐 게 있으면 사이트도 이어서 다시 만들어요.</p>
 </section>`;
 }
 
@@ -191,50 +209,44 @@ function triggerLabel(result: unknown): string {
   return typeof trigger === 'string' ? trigger : '시작한 곳 모름';
 }
 
-function deploySection(model: PageModel): Html {
-  return html`<section aria-labelledby="deploy-title">
-  <h2 id="deploy-title">사이트 배포</h2>
-  ${runList('최근 배포', model.deployRuns)}
-  <form method="post" action="/admin/deploy" class="actions">
-    <button type="submit" class="secondary">사이트 다시 배포</button>
+function siteSection(model: PageModel): Html {
+  const { running, queued, recent, buildPending } = model.jobs;
+  return html`<section aria-labelledby="site-title">
+  <h2 id="site-title">사이트</h2>
+  ${!model.siteReady ? html`<p class="notice warn">아직 사이트를 만들지 못했어요. 아래 기록에서 실패 이유를 확인해 주세요.</p>` : ''}
+  ${buildPending && model.siteReady ? html`<p class="notice warn">마지막 사이트 만들기가 실패해 지금은 이전 사이트가 보여요. 다음 자동 동기화 때 다시 시도해요.</p>` : ''}
+  ${running ? html`<p class="notice ok">지금 ${JOB_LABELS[running.kind]} 중이에요 (${running.reason}, ${formatTime(running.startedAt)} 시작).${queued.length > 0 ? ` 다음 차례: ${queued.map((k) => JOB_LABELS[k]).join(', ')}` : ''}</p>` : ''}
+  ${
+    recent.length > 0
+      ? html`<h3>최근 작업</h3><ul class="runs">${recent.map(jobItem)}</ul>`
+      : html`<p class="muted">서버가 시작된 뒤 작업 기록이 아직 없어요.</p>`
+  }
+  <form method="post" action="/admin/build" class="actions">
+    <button type="submit" class="secondary">사이트 다시 만들기</button>
   </form>
-  <p class="help">DB에 있는 내용으로 사이트를 다시 만들어요. 배포가 실패하면 이전 사이트가 그대로 남아요.</p>
+  <p class="help">DB에 있는 내용으로 사이트를 다시 만들어요. 실패하면 이전 사이트가 그대로 남아요. 기록은 서버가 다시 시작되면 지워져요.</p>
 </section>`;
 }
 
-function runList(title: string, runs: Loaded<WorkflowRun[]>): Html {
-  if (!runs.ok) return html`<p class="notice error">${title}: 불러오지 못했어요. ${runs.error}</p>`;
-  if (runs.value.length === 0) return html`<p class="muted">${title}: 아직 없어요</p>`;
-  return html`<h3>${title}</h3><ul class="runs">${runs.value.map(
-    (run) => html`<li>
-      ${runBadge(run)}
-      <span>${formatTime(new Date(run.createdAt))}</span>
-      <span class="muted">${EVENT_LABELS[run.event] ?? run.event}</span>
-      ${run.url ? html`<a href="${run.url}" target="_blank" rel="noopener">기록 보기</a>` : ''}
-    </li>`,
-  )}</ul>`;
-}
+const JOB_LABELS = { sync: 'Notion 동기화', build: '사이트 만들기' } as const;
 
-const EVENT_LABELS: Record<string, string> = {
-  push: '코드 변경',
-  repository_dispatch: '콘텐츠·설정 변경',
-  schedule: '주간 예약',
-  workflow_dispatch: '수동 실행',
-};
-
-function runBadge(run: WorkflowRun): Html {
-  if (run.status !== 'completed') return html`<span class="badge ok">진행 중</span>`;
-  switch (run.conclusion) {
-    case 'success':
-      return html`<span class="badge ok">성공</span>`;
-    case 'failure':
-    case 'timed_out':
-      return html`<span class="badge error">실패</span>`;
-    case 'cancelled':
-      return html`<span class="badge muted">취소됨</span>`;
-    default:
-      return html`<span class="badge muted">${run.conclusion ?? run.status}</span>`;
-  }
+function jobItem(run: JobRun): Html {
+  const badge =
+    run.ok === undefined
+      ? html`<span class="badge ok">진행 중</span>`
+      : run.ok
+        ? html`<span class="badge ok">성공</span>`
+        : html`<span class="badge error">실패</span>`;
+  const seconds = run.finishedAt
+    ? Math.round((run.finishedAt.getTime() - run.startedAt.getTime()) / 1000)
+    : undefined;
+  return html`<li>
+    ${badge}
+    <span>${JOB_LABELS[run.kind]}${run.full ? ' (전체)' : ''}</span>
+    <span>${formatTime(run.startedAt)}</span>
+    <span class="muted">${run.reason}${seconds !== undefined ? ` · ${seconds}초` : ''}</span>
+    ${run.output ? html`<details><summary>출력 보기</summary><pre>${run.output}</pre></details>` : ''}
+  </li>`;
 }
 
 function settingsSection<K extends SettingsKey>(model: PageModel, key: K): Html {
@@ -257,7 +269,15 @@ function settingsSection<K extends SettingsKey>(model: PageModel, key: K): Html 
     ${settingsFields(key).map(
       (field) => html`<label>
       <span>${settingsLabel(key, field)}</span>
-      <input name="${field}" value="${values[field] ?? ''}" placeholder="${PLACEHOLDERS[field] ?? ''}" inputmode="${INPUT_MODES[field] ?? 'text'}" autocomplete="off">
+      ${
+        key === 'recruit' && field === 'generation'
+          ? generationSelect(values[field] ?? '', model.generations)
+          : key === 'recruit' && field === 'status'
+            ? statusSelect(values[field] ?? '')
+            : DATE_FIELDS.has(field)
+              ? html`<input type="date" name="${field}" value="${values[field] ?? ''}">`
+              : html`<input name="${field}" value="${values[field] ?? ''}" placeholder="${PLACEHOLDERS[field] ?? ''}" inputmode="${INPUT_MODES[field] ?? 'text'}" autocomplete="off">`
+      }
     </label>`,
     )}
     <div class="actions">
@@ -270,6 +290,39 @@ function settingsSection<K extends SettingsKey>(model: PageModel, key: K): Html 
     </div>
   </form>
 </section>`;
+}
+
+/**
+ * 모집 기수 선택지. 멤버 DB의 가장 높은 기수 다음 기수를 맨 위에 두고, 그 위로 두 기수, 아래로는 1기까지.
+ * 멤버 기수를 못 읽으면 1~15기. 지금 저장된 값이 목록 밖이면 그것도 넣는다.
+ */
+export function generationOptions(current: string, known: Loaded<number[]>): string[] {
+  const latest = known.ok && known.value.length > 0 ? Math.max(...known.value) : 13;
+  const options: string[] = [];
+  for (let n = latest + 2; n >= 1; n--) options.push(`${n}기`);
+  if (current && !options.includes(current)) options.unshift(current);
+  return options;
+}
+
+function generationSelect(current: string, known: Loaded<number[]>): Html {
+  const latest = known.ok && known.value.length > 0 ? Math.max(...known.value) : undefined;
+  return html`<select name="generation">
+    <option value="" ${current ? '' : html`selected`}>모집 안 함</option>
+    ${generationOptions(current, known).map(
+      (option) =>
+        html`<option value="${option}" ${option === current ? html`selected` : ''}>${option}${latest && option === `${latest + 1}기` ? ' (다음 기수)' : ''}</option>`,
+    )}
+  </select>`;
+}
+
+const DATE_FIELDS = new Set(['startDate', 'endDate']);
+
+function statusSelect(current: string): Html {
+  const value = current || 'open';
+  return html`<select name="status">${Object.entries(RECRUIT_STATUSES).map(
+    ([option, label]) =>
+      html`<option value="${option}" ${option === value ? html`selected` : ''}>${label}</option>`,
+  )}</select>`;
 }
 
 const INPUT_MODES: Record<string, string> = {
@@ -332,13 +385,19 @@ thead th { color: var(--muted); font-weight: 500; }
 .badge.error { background: var(--errbg); color: var(--err); }
 .runs { list-style:none; padding:0; margin:0; font-size:14px; }
 .runs li { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding: 4px 0; }
+.runs details { flex-basis: 100%; }
+.runs pre { margin: 6px 0 0; padding: 10px; max-height: 320px; overflow: auto; background: var(--errbg); border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
 .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top: 14px; }
 .check { display:flex; gap:6px; align-items:center; font-size:14px; }
 .fields label { display:block; margin: 0 0 12px; }
 .fields label span { display:block; font-size: 14px; margin-bottom: 4px; }
-input:not([type]), input[type=text] { width:100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+input:not([type]), input[type=text], input[type=password], input[type=date], select { width:100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
 button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--accent); color: var(--onaccent); cursor: pointer; }
 button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+button.link { background: none; color: var(--accent); padding: 0; font-weight: 400; text-decoration: underline; }
+form.inline { display: inline; margin: 0; }
+.login { max-width: 420px; padding-top: 12vh; }
+.login h1 { font-size: 22px; margin: 0 0 8px; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 `;

@@ -33,7 +33,7 @@ src/
   styles/                tokens.json(디자인 시스템 원본) → tokens.css(생성), global.css(Tailwind v4 @theme)
 public/intro/            인트로 사진 4장 + 달 고해상도 2장
 public/sw.js             서비스 워커(재방문 캐시)
-public/_headers          Cloudflare 캐시 헤더
+public/_headers          캐시 헤더(사이트 서버가 읽음)
 ```
 
 - 디자인 토큰: `tokens.json`을 고친 뒤 `pnpm --filter @luna/web tokens`로 `tokens.css`를 다시 만든다.
@@ -96,7 +96,7 @@ public/_headers          Cloudflare 캐시 헤더
 
 | 상황                       | 동작                                                                                                      |
 | -------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 없는 주소                  | `404.astro`. Cloudflare가 404 상태로 돌려준다(`wrangler.jsonc`의 `not_found_handling`)                    |
+| 없는 주소                  | `404.astro`. 사이트 서버가 404 상태로 돌려준다(`apps/admin/src/site.ts`)                                  |
 | DB 연결·조회 실패          | 빌드를 멈춘다. 배포가 안 되므로 이전 사이트가 그대로 남는다                                               |
 | 이름이 빈 행               | 그 행만 빼고 경고를 남긴다                                                                                |
 | 목록이 비었음              | 각 구역에 빈 상태 화면(EmptyState)                                                                        |
@@ -121,7 +121,7 @@ public/_headers          Cloudflare 캐시 헤더
 | 이동 스켈레톤 (`scripts/nav-pending.ts`) | 누르고 120ms 안에 새 페이지가 안 오면 탭 선택을 먼저 옮기고 도착할 페이지 모양(격자·비율 같음)의 스켈레톤을 덮는다. 새 페이지가 오면 View Transition 크로스페이드로 바뀐다                                                   |
 | 사진 스켈레톤 (`Picture.astro`)          | 사진이 오는 동안 같은 상자에 빛이 지나간다. 동작 줄이기면 멈춘 회색 상자                                                                                                                                                     |
 | 서비스 워커 (`public/sw.js`)             | 처음 방문 때 주 메뉴 5개 페이지와 그 JS·CSS를 Cache Storage에 받아 둔다. 다음부터 페이지는 캐시를 먼저 보여 주고 뒤에서 새 HTML로 바꿔 둔다. `/admin`·`/img/` 사진·다른 출처는 건드리지 않음(사진은 1년 immutable HTTP 캐시) |
-| HTTP 캐시 (`public/_headers`)            | `/_astro/*`(해시 파일) 1년 immutable, 인트로 사진 1주 + SWR, `sw.js` no-cache. HTML은 Cloudflare 기본(매번 ETag 확인)                                                                                                        |
+| HTTP 캐시 (`public/_headers`)            | `/_astro/*`(해시 파일) 1년 immutable, 인트로 사진 1주 + SWR, `sw.js` no-cache. HTML은 매번 ETag 확인(사이트 서버 기본값)                                                                                                     |
 
 - 쿠키를 쓰지 않는 이유: 쿠키는 요청마다 서버로 실려 가고 한 개 4KB 남짓이라 페이지·자산을 담을 수 없다. 자산은 HTTP 캐시와 Cache Storage가 맡는다.
 - 배포 직후 첫 방문에는 예전 HTML이 한 번 보일 수 있다(뒤에서 갱신되어 다음 이동부터 새 내용). 캐시한 HTML이 쓰는 JS·CSS는 같이 받아 두므로 예전 HTML도 깨지지 않는다.
@@ -165,6 +165,6 @@ public/_headers          Cloudflare 캐시 헤더
 
 - 창립 연도 확인(`site.ts` `foundedYear`, 지금 2018)
 - 모집 기수·기간·지원 링크, 연락처·SNS: 관리자 페이지(`apps/admin`)에서 입력
-- 도메인(`SITE_URL`), Cloudflare 배포 방식 확정
+- 도메인(`SITE_URL`) 확정
 - 라이트 모드(`prefers-color-scheme`) 지원
 - 인트로 밖 구름 3곳(모집 섹션, 푸터 위, 404): 사용자 확인 후 적용
