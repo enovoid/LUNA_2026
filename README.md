@@ -48,6 +48,16 @@ pnpm dev                    # 사이트 개발 서버
 
 lint·format은 ESLint/Prettier 대신 Biome 하나로 쓴다. 한 가지 한계: **Biome는 `.astro` 파일의 frontmatter(`---` 안쪽 TypeScript)만 부분적으로 지원**하고 템플릿 부분은 검사하지 않는다. 그래서 `.astro` 템플릿과 타입은 `astro check`(`pnpm typecheck`)가 맡는다. 필요하면 `biome.json`의 `overrides`로 `.astro` 파일의 일부 규칙(예: `noUnusedImports`)을 끈다.
 
+## 커밋 컨벤션
+
+[Conventional Commits](https://www.conventionalcommits.org/ko/v1.0.0/)를 따른다: `<type>(<scope>): <설명>`
+
+- type: `feat` `fix` `docs` `style` `refactor` `perf` `test` `build` `ci` `chore` `revert`
+- scope(선택): `web` `db` `sync` `ci` 등. 예: `feat(db): members 테이블에 sort 열 추가`
+- 설명은 한글이어도 되고, 제목은 마침표 없이 짧게. 본문에 이유를 적는다.
+- 하위 호환이 깨지면 `feat!:` 또는 본문에 `BREAKING CHANGE:`.
+- PR 단위로 CI(`commitlint`)가 PR의 모든 커밋 메시지를 검사한다.
+
 ## CI / 배포 (GitHub Actions)
 
 | 워크플로     | 언제                                                                                 | 하는 일                                                                      |
