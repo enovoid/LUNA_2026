@@ -1,4 +1,5 @@
 // 사이트 전역 설정. Notion에서 관리하지 않는 값만 여기에 둔다.
+// 모집 정보와 연락처는 운영진이 관리자 페이지(apps/admin)에서 고치고 DB(site_settings)에서 읽는다 → loadSiteData().settings
 
 export interface IntroSceneVariant {
   /** 이미지 원본 가로세로비(가로/세로) */
@@ -27,21 +28,6 @@ export const site = {
     '세상을 비추는 달, LUNA. 기술로 사회 문제를 푸는 IT 소셜벤처 동아리 루나의 멤버, 프로젝트, 수상 기록을 소개합니다.',
   /** TODO: 창립 연도 확인(요청서 기준 2018). 비우면(null) "Since …" 문구를 숨긴다. */
   foundedYear: 2018 as number | null,
-
-  /** 모집 섹션. generation·applyUrl 중 하나라도 비어 있으면 모집 섹션과 "지원하기" 버튼을 숨긴다. */
-  recruit: {
-    generation: '', // TODO: 예) "9기"
-    period: '', // TODO: 예) "3월 2일 ~ 3월 15일"
-    target: '', // TODO: 지원 대상
-    applyUrl: '', // TODO: 지원서 링크(https://…)
-  },
-
-  /** 푸터 연락처·SNS. 비어 있는 항목은 표시하지 않는다. */
-  contact: {
-    email: '', // TODO
-    instagram: '', // TODO: https://instagram.com/…
-    github: '', // TODO
-  },
 
   /** 인트로 사진 출처 표기. 라이선스상 필요하면 채운다(푸터에 표시). */
   photoCredit: 'Unsplash',
@@ -87,8 +73,6 @@ export const site = {
     mobileMedia: string;
   },
 } as const;
-
-export const isRecruiting = Boolean(site.recruit.generation && site.recruit.applyUrl);
 
 export const nav = [
   { key: 'home', label: '홈', href: '/' },

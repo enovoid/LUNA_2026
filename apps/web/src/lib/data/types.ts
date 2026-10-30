@@ -1,3 +1,5 @@
+import type { ContactSettings, RecruitSettings } from '@luna/db/settings';
+
 /** R2에 올라간 이미지. 실제 파일은 `${R2_PUBLIC_URL}/${key}-{480|960|1600}.webp` */
 export interface ImageRef {
   key: string;
@@ -50,5 +52,12 @@ export interface SiteData {
   awards: Award[];
   projects: Project[];
   faqs: Faq[];
+  /** 관리자 페이지에서 고치는 값(site_settings). 저장된 적 없으면 빈 값이라 해당 구역을 숨긴다. */
+  settings: SiteSettings;
   source: 'db' | 'mock';
+}
+
+export interface SiteSettings {
+  recruit: RecruitSettings;
+  contact: ContactSettings;
 }

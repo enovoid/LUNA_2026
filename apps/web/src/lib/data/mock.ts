@@ -21,6 +21,16 @@ const names = [
 
 export const mockData: SiteData = {
   source: 'mock',
+  // 모집 섹션·푸터 링크가 보이도록 채운 예시 값. 실제 값은 관리자 페이지에서 저장한다.
+  settings: {
+    recruit: {
+      generation: '9기',
+      period: '3월 2일 ~ 3월 15일',
+      target: '재학생 누구나',
+      applyUrl: 'https://example.com/apply',
+    },
+    contact: { email: '', instagram: 'https://instagram.com/', github: '' },
+  },
   members: names.map((name, i) => ({
     id: `mock-member-${i}`,
     name,

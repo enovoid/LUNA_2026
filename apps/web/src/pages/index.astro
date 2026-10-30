@@ -1,9 +1,9 @@
 ---
+import { isRecruiting as hasRecruit } from '@luna/db/settings';
 import EmptyState from '../components/EmptyState.astro';
 import Logo from '../components/Logo.astro';
 import ProjectCard from '../components/ProjectCard.astro';
 import ScrollIntro from '../components/ScrollIntro.astro';
-import { isRecruiting, site } from '../content/site';
 import Base from '../layouts/Base.astro';
 import {
   computeStats,
@@ -16,7 +16,9 @@ import {
 } from '../lib/content';
 import { loadSiteData } from '../lib/data';
 
-const { members, awards, projects, faqs } = await loadSiteData();
+const { members, awards, projects, faqs, settings } = await loadSiteData();
+const { recruit, contact } = settings;
+const isRecruiting = hasRecruit(recruit);
 const stats = computeStats(members, awards);
 const sortedFaqs = sortFaqs(faqs);
 const intro = sortedFaqs[0]?.answer ?? '';
@@ -183,7 +185,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
                 ))}
               </div>
             ) : (
-              <EmptyState title="준비 중인 질문이 없어요" message={site.contact.email ? `궁금한 점은 ${site.contact.email}로 물어봐 주세요.` : undefined} />
+              <EmptyState title="준비 중인 질문이 없어요" message={contact.email ? `궁금한 점은 ${contact.email}로 물어봐 주세요.` : undefined} />
             )
           }
         </div>
@@ -197,10 +199,10 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
             <Logo size={320} class="apply-mark" />
             <div class="apply-text">
               <span class="apply-eyebrow">RECRUITING</span>
-              <h2 id="apply-title">LUNA {site.recruit.generation} 멤버 모집</h2>
-              <p>{[site.recruit.period, site.recruit.target].filter(Boolean).join(" · ")}</p>
+              <h2 id="apply-title">LUNA {recruit.generation} 멤버 모집</h2>
+              <p>{[recruit.period, recruit.target].filter(Boolean).join(" · ")}</p>
             </div>
-            <a href={site.recruit.applyUrl} class="btn btn-primary apply-cta" target="_blank" rel="noopener">
+            <a href={recruit.applyUrl} class="btn btn-primary apply-cta" target="_blank" rel="noopener">
               지원서 작성하기<span class="sr-only">(새 창)</span>
             </a>
           </div>

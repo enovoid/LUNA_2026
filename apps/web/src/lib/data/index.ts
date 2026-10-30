@@ -65,6 +65,7 @@ function sanitize(data: SiteData): SiteData {
 
   return {
     source: data.source,
+    settings: data.settings,
     members: keep('member', data.members, (m) => m.name.trim() !== ''),
     awards: keep('award', data.awards, (a) => a.name.trim() !== ''),
     projects: keep('project', data.projects, (p) => p.name.trim() !== ''),
