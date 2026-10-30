@@ -183,6 +183,16 @@
   --fade-dur: 0.25s;
 }
 
+/* 바탕·글자색과 color-scheme은 레이어 밖에 한 번 더 둔다. 레이어 밖 규칙은 레이어 안 규칙보다 우선하므로,
+   페이지를 감싸는 환경(미리보기 등)이 레이어 없는 body { color: #000 } 같은 기본값을 넣어도 다크가 유지된다. */
+:root:root {
+  color-scheme: dark;
+}
+html body {
+  background: var(--bg);
+  color: var(--text);
+}
+
 @layer base {
   /* 글자색은 html에서 한 번만 정하고 아래는 상속한다(요소마다 하드코딩하지 않는다). */
   html {
