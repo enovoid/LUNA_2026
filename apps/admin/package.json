@@ -1,0 +1,22 @@
+{
+  "name": "@luna/admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@luna/db": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "jose": "^6.2.14",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261030.1",
+    "vitest": "^4.0.0",
+    "wrangler": "^4.156.0"
+  }
+}
