@@ -57,7 +57,8 @@ const tabs = [
     z-index: 40;
     display: flex;
     justify-content: center;
-    padding-inline: 16px;
+    /* 가로 모드의 노치·접이식 힌지 쪽 안전 영역을 피한다 */
+    padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
     pointer-events: none;
   }
   ul {
@@ -76,6 +77,7 @@ const tabs = [
   }
   li {
     flex: 1;
+    min-width: 0;
   }
   a {
     display: flex;
@@ -106,6 +108,19 @@ const tabs = [
       transform: scale(0.94);
       transition-duration: var(--press-dur);
       transition-timing-function: ease-out;
+    }
+  }
+  /* 접이식 바깥 화면처럼 아주 좁을 때(≤ 359px)도 다섯 칸이 한 줄에 들어가게 */
+  @media (max-width: 359px) {
+    .tab-bar {
+      padding-inline: 8px;
+    }
+    ul {
+      padding: 3px;
+    }
+    a {
+      font-size: 10px;
+      white-space: nowrap;
     }
   }
   @media (min-width: 768px) {

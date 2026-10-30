@@ -203,6 +203,8 @@ html body {
     /* 누름 반응은 :active 축소로 보여 주므로 iOS 기본 회색 탭 강조는 끈다 */
     -webkit-tap-highlight-color: transparent;
     scroll-padding-top: 88px;
+    /* 세로 스크롤바가 생기고 사라져도 폭이 변하지 않게(페이지마다 길이가 달라 내비가 옆으로 밀리던 것) */
+    scrollbar-gutter: stable;
   }
   body {
     margin: 0;
