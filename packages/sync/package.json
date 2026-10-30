@@ -6,6 +6,7 @@
     "start": "tsx src/index.ts",
     "sync": "tsx --env-file-if-exists=../../.env src/index.ts",
     "import:notion": "tsx --env-file-if-exists=../../.env src/import-cli.ts",
+    "import:start": "tsx src/import-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
