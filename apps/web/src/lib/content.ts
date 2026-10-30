@@ -34,25 +34,6 @@ export function groupMembersByGeneration(members: Member[]) {
     }));
 }
 
-/** 직군별 묶음. 직군 이름 가나다순, 안에서는 최근 기수부터, 같은 기수는 이름순. */
-export function groupMembersByPosition(members: Member[]) {
-  const groups = new Map<string, Member[]>();
-  for (const m of members) {
-    const key = m.position || '직군 미정';
-    groups.set(key, [...(groups.get(key) ?? []), m]);
-  }
-  return [...groups.entries()]
-    .sort(([a], [b]) => ko.compare(a, b))
-    .map(([position, list]) => ({
-      position,
-      members: list.sort(
-        (a, b) =>
-          generationNumber(b.lunaGeneration) - generationNumber(a.lunaGeneration) ||
-          ko.compare(a.name, b.name),
-      ),
-    }));
-}
-
 export function uniqueSorted(values: string[], order: 'asc' | 'desc' = 'asc') {
   const list = [...new Set(values.filter(Boolean))].sort(ko.compare);
   return order === 'desc' ? list.reverse() : list;

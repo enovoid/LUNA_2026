@@ -1,136 +1,145 @@
 ---
 import EmptyState from '../components/EmptyState.astro';
-import Filter from '../components/Filter.astro';
-import FilterBoot from '../components/FilterBoot.astro';
-import MemberCard from '../components/MemberCard.astro';
-import MemberSheet from '../components/MemberSheet.astro';
-import MemberViewBoot from '../components/MemberViewBoot.astro';
-import MemberViewToggle from '../components/MemberViewToggle.astro';
+import MemberRow from '../components/MemberRow.astro';
 import PageHead from '../components/PageHead.astro';
 import Base from '../layouts/Base.astro';
-import { groupMembersByGeneration, groupMembersByPosition, uniqueSorted } from '../lib/content';
+import { generationNumber, groupMembersByGeneration } from '../lib/content';
 import { loadSiteData } from '../lib/data';
 
 const { members } = await loadSiteData();
-const views = [
-  {
-    key: 'generation',
-    groups: groupMembersByGeneration(members).map((g) => ({
-      title: g.generation,
-      members: g.members,
-    })),
-    detail: 'position',
-  },
-  {
-    key: 'position',
-    groups: groupMembersByPosition(members).map((g) => ({ title: g.position, members: g.members })),
-    detail: 'generation',
-  },
-] as const;
-const positions = uniqueSorted(members.map((m) => m.position));
+const groups = groupMembersByGeneration(members).map((g) => {
+  const n = generationNumber(g.generation);
+  // "LUNA 8기" → 큰 숫자 "08". 숫자가 없는 묶음(기수 미정)은 이름을 그대로 쓴다.
+  return { ...g, numeral: n >= 0 ? String(n).padStart(2, '0') : null };
+});
 ---
 
 <Base title="멤버" description="루나를 만들어 가는 사람들을 기수별로 소개합니다." current="members">
-  <PageHead title="멤버" lead="루나를 만들어 가는 사람들입니다.">
-    <div class="controls">
-      {members.length > 0 && <MemberViewToggle />}
-      <Filter label="직군" param="position" options={positions} unit="명" />
-    </div>
-  </PageHead>
+  <PageHead title="멤버" lead="루나를 만들어 가는 사람들입니다." />
 
-  <div class="container-page page-body" data-filter-scope="position">
+  <div class="container-page page-body">
     {
       members.length === 0 ? (
         <EmptyState title="아직 소개할 멤버가 없어요" message="멤버가 등록되면 기수별로 보여요." />
       ) : (
-        views.map((v) => (
-          <div class="view" data-member-view={v.key} hidden={v.key !== 'generation'}>
-            {v.groups.map((g, i) => (
-              <section class="gen" data-filter-group aria-labelledby={`${v.key}-${i}`}>
-                <div class="gen-head">
-                  <h2 id={`${v.key}-${i}`}>{g.title}</h2>
-                  <span>{g.members.length}명</span>
-                </div>
-                <ul class="member-grid">
-                  {g.members.map((m) => (
-                    <li data-filter-item data-position={m.position}>
-                      <MemberCard member={m} detail={v.detail} />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
+        groups.map((g, i) => (
+          <section class="gen" aria-labelledby={`gen-${i}`}>
+            <div class="gen-head">
+              <h2 id={`gen-${i}`}>
+                {g.numeral ? (
+                  <>
+                    <span class="gen-num" aria-hidden="true">{g.numeral}</span>
+                    <span class="sr-only">{g.generation}</span>
+                    <span class="gen-label" aria-hidden="true">{g.generation}</span>
+                  </>
+                ) : (
+                  <span class="gen-label gen-label-only">{g.generation}</span>
+                )}
+              </h2>
+              <p class="gen-count">{g.members.length}명</p>
+            </div>
+            <ol class="roll">
+              {g.members.map((m) => (
+                <li>
+                  <MemberRow member={m} />
+                </li>
+              ))}
+            </ol>
+          </section>
         ))
       )
     }
-    <EmptyState title="이 직군의 멤버가 없어요" message="다른 직군을 골라 보세요." filterEmpty />
   </div>
-  {members.map((m) => <MemberSheet member={m} />)}
-  <FilterBoot param="position" />
-  <MemberViewBoot />
 </Base>
 
 <script>
-  import '../scripts/member-sheet';
+  import '../scripts/member-row';
 </script>
 
 <style>
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    max-width: 100%;
-  }
-  .view {
-    display: flex;
-    flex-direction: column;
-    gap: 40px;
-  }
-  .view[hidden] {
-    display: none;
-  }
   .page-body {
     display: flex;
     flex-direction: column;
-    gap: 40px;
-    padding-top: 32px;
-    padding-bottom: 96px;
+    gap: 72px;
+    padding-top: 40px;
+    padding-bottom: 120px;
   }
   .gen {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
   .gen-head {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
   }
   .gen-head h2 {
+    display: flex;
+    flex-direction: column;
     margin: 0;
+  }
+  /* 기수 숫자가 이 페이지의 주인공. 크게, 촘촘하게, 숫자 폭 고정. */
+  .gen-num {
+    font-size: clamp(88px, 22vw, 168px);
+    line-height: 0.86;
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text, var(--color-label));
+  }
+  .gen-label {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent, var(--color-accent));
+  }
+  .gen-label-only {
+    margin-top: 0;
     font-size: 28px;
     line-height: 34px;
-    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text, var(--color-label));
   }
-  .gen-head span {
+  .gen-count {
+    margin: 0;
     font-size: 15px;
     line-height: 20px;
     color: var(--text-2, var(--color-label-2));
+    font-variant-numeric: tabular-nums;
   }
-  .member-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px 12px;
+  .roll {
     margin: 0;
     padding: 0;
     list-style: none;
   }
-  @media (min-width: 768px) {
-    .member-grid {
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 12px 20px;
+
+  /* 넓은 화면: 왼쪽에 기수 숫자를 붙여 두고(스크롤해도 머무름) 오른쪽에 명단을 흘린다. */
+  @media (min-width: 900px) {
+    .page-body {
+      gap: 120px;
+      padding-top: 64px;
+    }
+    .gen {
+      display: grid;
+      grid-template-columns: minmax(220px, 3fr) 9fr;
+      column-gap: 48px;
+      align-items: start;
+    }
+    .gen-head {
+      position: sticky;
+      top: 96px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .roll {
+      padding-top: 4px;
     }
   }
 </style>
