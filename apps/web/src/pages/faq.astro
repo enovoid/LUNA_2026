@@ -1,15 +1,17 @@
 ---
+import { isRecruiting as hasRecruit } from '@luna/db/settings';
 import EmptyState from '../components/EmptyState.astro';
 import FaqList from '../components/FaqList.astro';
 import PageHead from '../components/PageHead.astro';
-import { isRecruiting, site } from '../content/site';
 import Base from '../layouts/Base.astro';
 import { sortFaqs } from '../lib/content';
 import { loadSiteData } from '../lib/data';
 
-const { faqs } = await loadSiteData();
+const { faqs, settings } = await loadSiteData();
 const sorted = sortFaqs(faqs);
-const { email, instagram } = site.contact;
+const { email, instagram } = settings.contact;
+const { recruit } = settings;
+const isRecruiting = hasRecruit(recruit);
 ---
 
 <Base title="자주 묻는 질문" description="루나 지원과 활동에 대해 자주 묻는 질문을 모았습니다." current="faq">
@@ -43,7 +45,7 @@ const { email, instagram } = site.contact;
               </a>
             )}
             {isRecruiting && (
-              <a href={site.recruit.applyUrl} class="btn btn-primary" target="_blank" rel="noopener">
+              <a href={recruit.applyUrl} class="btn btn-primary" target="_blank" rel="noopener">
                 지원하기<span class="sr-only">(새 창)</span>
               </a>
             )}
