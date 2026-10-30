@@ -15,9 +15,16 @@ if (contact.github) links.push({ label: 'GitHub', href: contact.github });
 ---
 
 <footer class="site-footer">
+  <!-- 예전 luna-landing 푸터의 서명. 동아리 슬로건으로 페이지를 맺는다. -->
+  <div class="container-page footer-sign">
+    <Logo size={44} />
+    <p class="footer-slogan">
+      <span>세상을 비추는 달,</span>
+      <strong>LUNA</strong>
+    </p>
+  </div>
   <div class="container-page footer-inner">
     <span class="footer-brand">
-      <Logo size={20} />
       LUNA · IT Social Venture{site.foundedYear && ` · Since ${site.foundedYear}`}
     </span>
     {
@@ -40,8 +47,11 @@ if (contact.github) links.push({ label: 'GitHub', href: contact.github });
 
 <style>
   .site-footer {
-    padding: 32px 0 120px;
-    box-shadow: inset 0 1px 0 var(--color-separator);
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    padding: 56px 0 120px;
+    background: var(--color-card);
     font-size: 13px;
     line-height: 18px;
     color: var(--color-label-2);
@@ -50,6 +60,27 @@ if (contact.github) links.push({ label: 'GitHub', href: contact.github });
     .site-footer {
       padding-bottom: 48px;
     }
+  }
+  .footer-sign {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .footer-slogan {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    color: var(--color-label-2);
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+  }
+  .footer-slogan strong {
+    color: var(--color-label);
+    font-size: 28px;
+    line-height: 32px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
   }
   .footer-inner {
     display: flex;

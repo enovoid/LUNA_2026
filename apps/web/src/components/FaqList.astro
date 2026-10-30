@@ -18,10 +18,14 @@ const { faqs, openFirst = 0, idPrefix = 'faq' } = Astro.props;
     faqs.map((f, i) => (
       <details id={`${idPrefix}-${i + 1}`} open={i < openFirst}>
         <summary>
-          <span>{f.question}</span>
+          <span class="faq-mark" aria-hidden="true">Q</span>
+          <span class="faq-q">{f.question}</span>
           <span class="faq-chev" aria-hidden="true">›</span>
         </summary>
-        <p>{f.answer}</p>
+        <div class="faq-a">
+          <span class="faq-mark" aria-hidden="true">A</span>
+          <p>{f.answer}</p>
+        </div>
       </details>
     ))
   }
@@ -43,7 +47,6 @@ const { faqs, openFirst = 0, idPrefix = 'faq' } = Astro.props;
   summary {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
     min-height: 60px;
     padding-block: 12px;
@@ -53,6 +56,26 @@ const { faqs, openFirst = 0, idPrefix = 'faq' } = Astro.props;
   }
   summary:focus-visible {
     outline-offset: -2px;
+  }
+  /* 예전 사이트의 Q·A 표시. 질문과 답이 같은 세로선에서 시작한다. */
+  .faq-mark {
+    flex: none;
+    width: 20px;
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 800;
+    color: var(--color-accent);
+  }
+  .faq-q {
+    flex: 1;
+  }
+  .faq-a {
+    display: flex;
+    gap: 12px;
+  }
+  .faq-a .faq-mark {
+    line-height: 26px;
+    color: var(--color-label-2);
   }
   .faq-chev {
     font-size: 22px;

@@ -37,7 +37,9 @@ const lead =
       ) : (
         groups.map((g) => (
           <section class="year" data-filter-group aria-labelledby={`year-${g.year}`}>
-            <h2 id={`year-${g.year}`}>{g.year}</h2>
+            <h2 id={`year-${g.year}`}>
+              <span class="year-num">{g.year}</span>년의 루나
+            </h2>
             <ul class="award-list">
               {g.awards.map((a) => (
                 <li data-filter-item data-year={g.year}>
@@ -67,11 +69,19 @@ const lead =
     flex-direction: column;
     gap: 16px;
   }
+  /* 예전 사이트의 "2023년의 LUNA" 머리글. 연도를 크게, 뒤 말은 한 단계 흐리게. */
   h2 {
     margin: 0;
-    font-size: 28px;
-    line-height: 34px;
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.2;
     font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-label-2);
+  }
+  .year-num {
+    font-weight: 800;
+    color: var(--color-label);
+    font-variant-numeric: tabular-nums;
   }
   .award-list {
     display: flex;

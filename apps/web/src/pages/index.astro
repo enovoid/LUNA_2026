@@ -4,6 +4,7 @@ import EmptyState from '../components/EmptyState.astro';
 import FaqList from '../components/FaqList.astro';
 import Logo from '../components/Logo.astro';
 import ProjectCard from '../components/ProjectCard.astro';
+import ProjectMarquee from '../components/ProjectMarquee.astro';
 import ScrollIntro from '../components/ScrollIntro.astro';
 import Base from '../layouts/Base.astro';
 import {
@@ -79,6 +80,8 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
   </section>
 
   <div class="home-sections">
+    <ProjectMarquee projects={projects} />
+
     <section aria-labelledby="stats-title" class="container-page section-stack">
       <div class="headline" data-reveal>
         <span class="eyebrow">BY THE NUMBERS</span>

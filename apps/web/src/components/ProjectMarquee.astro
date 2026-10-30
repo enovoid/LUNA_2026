@@ -1,0 +1,159 @@
+---
+import { sortProjects } from '../lib/content';
+// 프로젝트 이름 띠(예전 luna-landing 홈의 "크루원들은 지금까지 자발적으로…" 구역을 옮겨 옴).
+// 실제 프로젝트 이름을 큰 글자로 세 줄 늘어놓고, 스크롤하면 줄마다 반대 방향으로 천천히 흐른다(CSS 스크롤 타임라인, JS 없음).
+// 줄은 장식이라 스크린 리더에서 숨기고, 의미는 아래 문장과 링크가 전한다.
+import type { Project } from '../lib/data';
+
+interface Props {
+  projects: Project[];
+}
+const { projects } = Astro.props;
+
+const names = [...new Set(sortProjects(projects).map((p) => p.name.trim()))].filter(Boolean);
+const ROWS = 3;
+// 한 줄을 화면보다 넉넉히 길게 채운다.
+const PER_ROW = 10;
+// 이름이 넉넉하면 줄마다 다른 이름을, 적으면 모든 줄에 전체 이름을 시작점만 엇갈려 쓴다(한 줄이 같은 이름만 되풀이하지 않게).
+const split = names.length >= ROWS * 4;
+const rows = Array.from({ length: ROWS }, (_, r) => {
+  const base = split ? names.filter((_, i) => i % ROWS === r) : names;
+  const offset = split ? 0 : Math.ceil((names.length * r) / ROWS);
+  return Array.from(
+    { length: Math.max(PER_ROW, base.length) },
+    (_, i) => base[(i + offset) % base.length],
+  );
+});
+---
+
+{
+  names.length > 0 && (
+    <section class="marquee" aria-labelledby="marquee-title">
+      <p class="marquee-lead container-page" data-reveal>
+        루나 크루원들이 지금까지 스스로 시작한 프로젝트들
+      </p>
+      <div class="marquee-rows" aria-hidden="true">
+        {rows.map((row, r) => (
+          <div class="marquee-row" data-dir={r % 2 ? "right" : "left"}>
+            <span class="marquee-track">
+              {row.map((name) => (
+                <span class="marquee-name">{name}</span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div class="marquee-foot container-page" data-reveal>
+        <h2 id="marquee-title" class="marquee-title">
+          <strong>{names.length.toLocaleString("ko-KR")}개의 프로젝트</strong>로 기술이 닿지 않던 문제를 풀어 왔습니다.
+        </h2>
+        <a href="/projects" class="more-link">루나의 프로젝트 보러 가기</a>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .marquee {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    overflow: hidden;
+  }
+  .marquee-lead {
+    margin-block: 0;
+    font-size: 17px;
+    line-height: 24px;
+    font-weight: 600;
+    color: var(--color-label-2);
+  }
+  .marquee-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .marquee-row {
+    white-space: nowrap;
+  }
+  /* 왼쪽으로 흐르는 줄은 왼쪽 끝에서, 오른쪽으로 흐르는 줄은 조금 당겨 둔 자리에서 시작해 빈 곳이 드러나지 않는다. */
+  .marquee-row[data-dir="right"] .marquee-track {
+    translate: -18% 0;
+  }
+  .marquee-track {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: var(--margin);
+  }
+  .marquee-name {
+    font-size: clamp(30px, 5.6vw, 72px);
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+  /* 이름 사이에 작은 초승달 점. 가운데 줄은 한 단계 흐리게 해 세 줄이 한 덩어리로 뭉치지 않게 한다. */
+  .marquee-name + .marquee-name::before {
+    content: "";
+    display: inline-block;
+    width: 0.32em;
+    height: 0.32em;
+    margin: 0 0.5em;
+    vertical-align: 0.22em;
+    border-radius: 50%;
+    background: radial-gradient(circle at 70% 30%, transparent 46%, var(--color-accent) 48%);
+  }
+  .marquee-row:nth-child(2) .marquee-name {
+    color: var(--color-label-2);
+  }
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .marquee-track {
+        animation: marquee-left linear both;
+        animation-timeline: view();
+        animation-range: cover 0% cover 100%;
+      }
+      .marquee-row[data-dir="right"] .marquee-track {
+        animation-name: marquee-right;
+      }
+    }
+  }
+  @keyframes marquee-left {
+    from {
+      translate: 0 0;
+    }
+    to {
+      translate: -18% 0;
+    }
+  }
+  @keyframes marquee-right {
+    from {
+      translate: -18% 0;
+    }
+    to {
+      translate: 0 0;
+    }
+  }
+  .marquee-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 32px;
+  }
+  .marquee-title {
+    margin: 0;
+    max-width: 640px;
+    font-size: clamp(24px, 3vw, 32px);
+    line-height: 1.35;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-label-2);
+  }
+  .marquee-title strong {
+    font-weight: 800;
+    color: var(--color-label);
+  }
+  .more-link {
+    font-size: 17px;
+    font-weight: 600;
+  }
+</style>
