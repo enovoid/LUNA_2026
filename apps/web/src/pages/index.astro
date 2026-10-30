@@ -34,21 +34,21 @@ const statItems = [
     count: stats.awardCount,
     format: 'count',
     unit: '회',
-    label: '대회 수상',
+    label: '수상',
   },
   {
     value: formatWon(stats.prizeTotal),
     count: stats.prizeTotal,
     format: 'won',
     unit: '',
-    label: '누적 상금',
+    label: '상금',
   },
   {
     value: `${stats.memberCount.toLocaleString('ko-KR')}명`,
     count: stats.memberCount,
     format: 'count',
     unit: '명',
-    label: '함께한 멤버',
+    label: '멤버',
   },
 ];
 // 소개 문단을 낱말로 나눈다. 스크롤하면 줄 단위로 밝아진다(CSS 스크롤 타임라인, JS 없음).
@@ -72,8 +72,8 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
         ))
       }
       <div class="about-actions" data-reveal>
-        <a href="/projects" class="btn btn-primary">프로젝트 둘러보기</a>
-        <a href={isRecruiting ? "#apply" : "/faq"} class="btn btn-ghost">지원 안내</a>
+        <a href="/projects" class="btn btn-primary">프로젝트</a>
+        <a href={isRecruiting ? "#apply" : "/faq"} class="btn btn-ghost">지원</a>
       </div>
     </div>
   </section>
@@ -82,7 +82,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     <section aria-labelledby="stats-title" class="container-page section-stack">
       <div class="headline" data-reveal>
         <span class="eyebrow">BY THE NUMBERS</span>
-        <h2 id="stats-title">숫자로 보는 루나</h2>
+        <h2 id="stats-title">루나</h2>
       </div>
       <ul class="stats" data-reveal>
         {
@@ -102,7 +102,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
       <div class="container-page section-head" data-reveal>
         <div class="headline">
           <span class="eyebrow">PROJECTS</span>
-          <h2 id="projects-title">세상을 비추는 프로젝트</h2>
+          <h2 id="projects-title">프로젝트</h2>
         </div>
         {latestProjects.length > 0 && <a href="/projects" class="more-link">모두 보기</a>}
       </div>
@@ -127,7 +127,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
           </div>
         ) : (
           <div class="container-page">
-            <EmptyState title="아직 소개할 프로젝트가 없어요" message="프로젝트가 등록되면 이곳에 보여요." />
+            <EmptyState title="프로젝트가 없습니다" />
           </div>
         )
       }
@@ -138,8 +138,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
         <div class="split-aside">
           <span class="eyebrow">AWARDS</span>
           <h2 id="awards-title">수상</h2>
-          <p>대회에서 거둔 성과를 연도별로 기록합니다.</p>
-          {latestAwards.length > 0 && <a href="/awards" class="more-link">전체 수상 기록</a>}
+          {latestAwards.length > 0 && <a href="/awards" class="more-link">모두 보기</a>}
         </div>
         <div class="split-main">
           {
@@ -159,7 +158,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
                 ))}
               </ul>
             ) : (
-              <EmptyState title="아직 등록된 수상 기록이 없어요" />
+              <EmptyState title="수상 기록이 없습니다" />
             )
           }
         </div>
@@ -171,15 +170,14 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
         <div class="split-aside">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-title">자주 묻는 질문</h2>
-          <p>지원 전에 궁금한 점을 모았습니다.</p>
-          {sortedFaqs.length > 0 && <a href="/faq" class="more-link">모든 질문 보기</a>}
+          {sortedFaqs.length > 0 && <a href="/faq" class="more-link">모두 보기</a>}
         </div>
         <div class="split-main">
           {
             homeFaqs.length > 0 ? (
               <FaqList faqs={homeFaqs} openFirst={1} idPrefix="home-faq" />
             ) : (
-              <EmptyState title="준비 중인 질문이 없어요" message={contact.email ? `궁금한 점은 ${contact.email}로 물어봐 주세요.` : undefined} />
+              <EmptyState title="질문이 없습니다" message={contact.email || undefined} />
             )
           }
         </div>
@@ -193,11 +191,11 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
             <Logo size={320} class="apply-mark" />
             <div class="apply-text">
               <span class="apply-eyebrow">RECRUITING</span>
-              <h2 id="apply-title">LUNA {recruit.generation} 멤버 모집</h2>
+              <h2 id="apply-title">LUNA {recruit.generation} 모집</h2>
               <p>{[recruit.period, recruit.target].filter(Boolean).join(" · ")}</p>
             </div>
             <a href={recruit.applyUrl} class="btn btn-primary apply-cta" target="_blank" rel="noopener">
-              지원서 작성하기<span class="sr-only">(새 창)</span>
+              지원하기<span class="sr-only">(새 창)</span>
             </a>
           </div>
         </section>
@@ -422,12 +420,6 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     display: flex;
     flex-direction: column;
     gap: 12px;
-  }
-  .split-aside p {
-    margin: 0;
-    font-size: 17px;
-    line-height: 24px;
-    color: var(--color-label-2);
   }
   .split-main {
     flex: 999 1 560px;

@@ -14,29 +14,28 @@ const { recruit } = settings;
 const isRecruiting = hasRecruit(recruit);
 ---
 
-<Base title="자주 묻는 질문" description="루나 지원과 활동에 대해 자주 묻는 질문을 모았습니다." current="faq">
-  <PageHead title="자주 묻는 질문" lead="지원과 활동에 대해 궁금한 점을 모았습니다." />
+<Base title="자주 묻는 질문" description="루나 자주 묻는 질문" current="faq">
+  <PageHead title="자주 묻는 질문" />
 
   <div class="container-page page-body">
     {
       sorted.length > 0 ? (
         <FaqList faqs={sorted} />
       ) : (
-        <EmptyState title="준비 중인 질문이 없어요" message={email ? `궁금한 점은 ${email}로 물어봐 주세요.` : undefined} />
+        <EmptyState title="질문이 없습니다" message={email || undefined} />
       )
     }
 
     {
       (email || instagram || isRecruiting) && (
-        <aside class="more card" aria-label="더 궁금한 점">
+        <aside class="more card" aria-label="문의">
           <div class="more-text">
-            <h2>찾는 답이 없나요?</h2>
-            <p>운영진에게 직접 물어봐 주세요.</p>
+            <h2>문의</h2>
           </div>
           <div class="more-actions">
             {email && (
               <a href={`mailto:${email}`} class="btn btn-ghost">
-                메일 보내기
+                이메일
               </a>
             )}
             {instagram && (
@@ -96,12 +95,6 @@ const isRecruiting = hasRecruit(recruit);
     font-size: 22px;
     line-height: 28px;
     font-weight: 700;
-  }
-  .more-text p {
-    margin: 0;
-    font-size: 15px;
-    line-height: 20px;
-    color: var(--color-label-2);
   }
   .more-actions {
     display: flex;
