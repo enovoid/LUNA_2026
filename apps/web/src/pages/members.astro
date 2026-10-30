@@ -14,13 +14,13 @@ const groups = groupMembersByGeneration(members).map((g) => {
 });
 ---
 
-<Base title="멤버" description="루나를 만들어 가는 사람들을 기수별로 소개합니다." current="members">
-  <PageHead title="멤버" lead="루나의 목표를 향해 함께 달려가고 있는 멤버들입니다." />
+<Base title="멤버" description="루나 멤버" current="members">
+  <PageHead title="멤버" />
 
   <div class="container-page page-body">
     {
       members.length === 0 ? (
-        <EmptyState title="아직 소개할 멤버가 없어요" message="멤버가 등록되면 기수별로 보여요." />
+        <EmptyState title="멤버가 없습니다" />
       ) : (
         <>
           <div class="gen-tabs" role="tablist" aria-label="기수">

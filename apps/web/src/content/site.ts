@@ -24,8 +24,7 @@ export interface IntroSceneVariant {
 export const site = {
   name: 'LUNA',
   title: '루나 LUNA — IT 소셜벤처 동아리',
-  description:
-    '세상을 비추는 달, LUNA. 기술로 사회 문제를 푸는 IT 소셜벤처 동아리 루나의 멤버, 프로젝트, 수상 기록을 소개합니다.',
+  description: '세상을 비추는 달, LUNA. IT 소셜벤처 동아리.',
   /** TODO: 창립 연도 확인(요청서 기준 2018). 비우면(null) "Since …" 문구를 숨긴다. */
   foundedYear: 2018 as number | null,
 

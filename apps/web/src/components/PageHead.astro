@@ -1,7 +1,7 @@
 ---
 interface Props {
   title: string;
-  lead: string;
+  lead?: string;
 }
 const { title, lead } = Astro.props;
 ---
@@ -9,7 +9,7 @@ const { title, lead } = Astro.props;
 <div class="page-head container-page">
   <div class="page-head-text">
     <h1>{title}</h1>
-    <p>{lead}</p>
+    {lead && <p>{lead}</p>}
   </div>
   <slot />
 </div>

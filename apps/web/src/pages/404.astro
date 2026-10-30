@@ -3,15 +3,14 @@
 import Base from '../layouts/Base.astro';
 ---
 
-<Base title="페이지를 찾을 수 없어요" description="요청한 페이지가 없거나 주소가 바뀌었습니다." current={null} noindex>
+<Base title="페이지를 찾을 수 없습니다" description="페이지를 찾을 수 없습니다" current={null} noindex>
   <section class="nf container-page" aria-labelledby="nf-title">
     <div class="nf-moon" aria-hidden="true">
       <span class="nf-code">404</span>
     </div>
-    <h1 id="nf-title">달이 길을 잃었어요</h1>
-    <p>찾는 페이지가 없거나 주소가 바뀌었어요. 주소를 다시 확인하거나 아래에서 이동해 주세요.</p>
+    <h1 id="nf-title">페이지를 찾을 수 없습니다</h1>
     <div class="nf-actions">
-      <a href="/" class="btn btn-primary">홈으로 가기</a>
+      <a href="/" class="btn btn-primary">홈</a>
       <a href="/members" class="btn btn-bordered">멤버</a>
       <a href="/projects" class="btn btn-bordered">프로젝트</a>
       <a href="/awards" class="btn btn-bordered">수상</a>
@@ -63,13 +62,6 @@ import Base from '../layouts/Base.astro';
     font-size: clamp(28px, 4vw, 40px);
     line-height: 1.2;
     font-weight: 700;
-  }
-  p {
-    max-width: 420px;
-    margin: 0;
-    font-size: 17px;
-    line-height: 26px;
-    color: var(--color-label-2);
   }
   .nf-actions {
     display: flex;

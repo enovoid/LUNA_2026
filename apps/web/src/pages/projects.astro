@@ -16,15 +16,15 @@ const years = uniqueSorted(
 );
 ---
 
-<Base title="프로젝트" description="루나가 기술로 풀어 온 문제들과 그 결과를 소개합니다." current="projects">
-  <PageHead title="프로젝트" lead="루나가 기술로 풀어 온 문제들입니다.">
+<Base title="프로젝트" description="루나 프로젝트" current="projects">
+  <PageHead title="프로젝트">
     <Filter label="연도" param="year" options={years} unit="개" />
   </PageHead>
 
   <div class="container-page page-body" data-filter-scope="year">
     {
       sorted.length === 0 ? (
-        <EmptyState title="아직 소개할 프로젝트가 없어요" message="프로젝트가 등록되면 이곳에 보여요." />
+        <EmptyState title="프로젝트가 없습니다" />
       ) : (
         <ul class="project-grid">
           {sorted.map((p) => (
@@ -35,7 +35,7 @@ const years = uniqueSorted(
         </ul>
       )
     }
-    <EmptyState title="이 연도의 프로젝트가 없어요" message="다른 연도를 골라 보세요." filterEmpty />
+    <EmptyState title="프로젝트가 없습니다" filterEmpty />
   </div>
   <FilterBoot param="year" />
 </Base>
