@@ -8,7 +8,8 @@ import notionSdk from '@notionhq/client';
 import type { Logger } from '../logger.js';
 import { RateLimitedQueue } from './rate-limit.js';
 
-const { Client, isFullDatabase, isFullDataSource, isFullPage } = notionSdk;
+const { APIErrorCode, Client, isFullDatabase, isFullDataSource, isFullPage, isNotionClientError } =
+  notionSdk;
 
 /** 2026-03-11부터 `archived`가 `in_trash`로 바뀌었다. SDK 5.12 이상 필요. */
 export const NOTION_VERSION = '2026-03-11';
@@ -62,7 +63,7 @@ export class NotionApi implements NotionReader {
       }
     } catch (error) {
       // data source ID를 넣은 경우 databases.retrieve는 object_not_found를 준다.
-      if ((error as { code?: string }).code !== 'object_not_found') throw error;
+      if (!isNotionClientError(error) || error.code !== APIErrorCode.ObjectNotFound) throw error;
     }
     const schema = await this.#queue.run(() =>
       this.#client.dataSources.retrieve({ data_source_id: dataSourceId }),
@@ -109,9 +110,7 @@ export class NotionApi implements NotionReader {
         if (result.object === 'page' && isFullPage(result) && !result.in_trash) pages.push(result);
       }
       // 한 쿼리의 결과 상한(기본 1만 행)에 걸리면 목록이 잘린다. 잘린 목록으로 삭제하면 안 되니 멈춘다.
-      if (
-        (response as { request_status?: { type?: string } }).request_status?.type === 'incomplete'
-      ) {
+      if (response.request_status?.type === 'incomplete') {
         throw new Error(
           `data source ${args.data_source_id} 조회 결과가 잘렸습니다(행 수 상한 초과)`,
         );

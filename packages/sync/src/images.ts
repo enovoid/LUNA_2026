@@ -36,10 +36,8 @@ export function variantKey(imageKey: string, width: number): string {
 
 /** EXIF 회전을 반영한 뒤, 최대 폭으로 줄였을 때의 크기. */
 export async function displaySize(bytes: Uint8Array): Promise<{ width: number; height: number }> {
-  const meta = await sharp(bytes).metadata();
-  const swap = (meta.orientation ?? 1) >= 5;
-  const width = (swap ? meta.height : meta.width) ?? 0;
-  const height = (swap ? meta.width : meta.height) ?? 0;
+  // metadata().autoOrient는 EXIF 방향을 반영한 크기다(sharp 0.34+).
+  const { width, height } = (await sharp(bytes).metadata()).autoOrient;
   if (!width || !height) throw new Error('이미지 크기를 읽을 수 없습니다');
   if (width <= LARGEST) return { width, height };
   return { width: LARGEST, height: Math.round((height * LARGEST) / width) };
@@ -48,7 +46,7 @@ export async function displaySize(bytes: Uint8Array): Promise<{ width: number; h
 /** WebP 세 가지 폭으로 변환한다. sharp는 기본으로 메타데이터(EXIF·GPS)를 지운다. */
 export async function toWebpVariants(bytes: Uint8Array, imageKey: string): Promise<ImageVariant[]> {
   // 움직이는 GIF 등은 첫 프레임만 쓴다.
-  const source = sharp(bytes, { animated: false }).rotate();
+  const source = sharp(bytes, { animated: false }).autoOrient();
   return Promise.all(
     IMAGE_WIDTHS.map(async (width) => ({
       width,

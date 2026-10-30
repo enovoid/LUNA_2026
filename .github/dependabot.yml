@@ -1,0 +1,15 @@
+# 워크플로의 액션은 커밋 SHA로 고정한다(GitHub 보안 권장). 새 버전은 Dependabot이 주 1회 PR로 올린다.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # 막 나온 버전은 일주일 기다린다(공급망 사고 대비, pnpm minimumReleaseAge와 같은 취지).
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

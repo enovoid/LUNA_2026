@@ -14,7 +14,7 @@ pnpm --filter @luna/sync test
 
 `--dry-run`과 `--check-schema`는 `NOTION_TOKEN`과 `NOTION_DB_*`만 있으면 된다. `DATABASE_URL`이 없으면 첫 실행처럼 전부 새 항목으로 보고 확인한다. 실제 실행에는 `.env.example`의 Notion·DB·R2·GitHub 값이 모두 필요하다.
 
-Railway에서는 Start 명령을 `pnpm --filter @luna/sync start`로 둔다(환경 변수는 Railway Variables에서 받음).
+Railway 설정은 [`railway.json`](railway.json)(config as code)에 있다: Start `pnpm --filter @luna/sync start`, Cron `*/15 * * * *`, 재시작 정책 NEVER(실패하면 다음 15분 실행이 다시 시도하므로 바로 재시작하지 않는다), 빌드 단계는 typecheck. 서비스 Settings의 Railway Config File에 `/packages/sync/railway.json`을 넣는다. 환경 변수는 Railway Variables에서 받는다.
 
 관리자 페이지의 "지금 다시 동기화"는 같은 명령을 GitHub Actions(`.github/workflows/sync.yml`, `SYNC_TRIGGER=admin`)에서 돌린다. 실행은 시작할 때 `sync_state._running`을 잡고, 다른 실행이 잡고 있으면 아무것도 하지 않고 종료 코드 0으로 끝난다(`--dry-run`은 잠그지 않음).
 
@@ -60,7 +60,7 @@ Notion-Version은 `2026-03-11`(공식 SDK `@notionhq/client` 5.x). 이 버전부
 
 Node 내장 `fetch`(undici 기반)를 쓴다.
 
-- Node 18부터 `fetch`가 내장되어 있고 Node 22(이 저장소 기준)에서는 안정 기능이다. 2026년 기준 새 Node 프로젝트에서 HTTP 클라이언트 의존성을 따로 두지 않는 쪽이 일반적이다.
+- Node 18부터 `fetch`가 내장되어 있고 Node 26(이 저장소 기준)에서는 안정 기능이다. 2026년 기준 새 Node 프로젝트에서 HTTP 클라이언트 의존성을 따로 두지 않는 쪽이 일반적이다.
 - 여기서 하는 일은 GET 한 번과 POST 한 번(dispatch)뿐이다. axios의 장점(인터셉터, 브라우저·Node 공용 어댑터, 자동 JSON 변환)이 쓰일 데가 없다.
 - 필요한 기능은 내장으로 된다: 타임아웃은 `AbortSignal.timeout()`, 크기 상한은 `response.body` 스트림을 읽으며 검사. 재시도는 어느 쪽이든 직접 짜야 한다(axios도 기본 재시도가 없다).
 - Notion SDK도 내부에서 `fetch`를 쓴다. 같은 클라이언트를 쓰면 프록시·TLS 설정이 한 군데로 모인다.

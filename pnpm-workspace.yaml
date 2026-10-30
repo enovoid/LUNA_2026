@@ -1,7 +1,31 @@
 packages:
   - apps/*
   - packages/*
-onlyBuiltDependencies:
-  - esbuild
-  - sharp
-  - workerd
+
+# pnpm 11부터 의존성 설치 스크립트는 여기서 허용한 패키지만 실행한다(onlyBuiltDependencies 대체).
+# 목록에 없는 패키지가 빌드 스크립트를 가지면 설치가 실패한다(strictDepBuilds 기본값 true).
+allowBuilds:
+  esbuild: true
+  sharp: true
+  # wrangler(apps/web, apps/admin)가 쓰는 로컬 Workers 런타임
+  workerd: true
+
+minimumReleaseAgeExclude:
+  - "@cloudflare/workers-types@5.20261030.1"
+  - miniflare@5.20261023.3-beta
+  - wrangler@4.156.0
+  - "@aws-sdk/checksums@3.1002.0"
+  - "@aws-sdk/client-s3@3.1160.0"
+  - "@aws-sdk/core@3.979.0"
+  - "@aws-sdk/credential-provider-env@3.972.79"
+  - "@aws-sdk/credential-provider-http@3.972.81"
+  - "@aws-sdk/credential-provider-ini@3.973.24"
+  - "@aws-sdk/credential-provider-login@3.972.86"
+  - "@aws-sdk/credential-provider-node@3.972.91"
+  - "@aws-sdk/credential-provider-process@3.972.79"
+  - "@aws-sdk/credential-provider-sso@3.973.23"
+  - "@aws-sdk/credential-provider-web-identity@3.972.85"
+  - "@aws-sdk/middleware-sdk-s3@3.972.84"
+  - "@aws-sdk/nested-clients@3.997.53"
+  - "@aws-sdk/token-providers@3.1160.0"
+  - "@notionhq/client@5.30.0"

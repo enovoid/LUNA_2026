@@ -95,6 +95,7 @@ export default function FilterControl({ label, param, options, unit }: Props) {
         {all.map((option, i) => {
           const selected = option === value;
           return (
+            // biome-ignore lint/a11y/useSemanticElements: WAI-ARIA APG 라디오 그룹 패턴. 화살표 키·thumb 이동을 직접 다루려고 button에 role="radio"를 쓴다.
             <button
               key={option}
               ref={(el) => {

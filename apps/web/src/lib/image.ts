@@ -1,8 +1,9 @@
+import { R2_PUBLIC_URL } from 'astro:env/server';
 import type { ImageRef } from './data';
 
 export const IMAGE_WIDTHS = [480, 960, 1600] as const;
 
-const base = (process.env.R2_PUBLIC_URL ?? '').replace(/\/+$/, '');
+const base = (R2_PUBLIC_URL ?? '').replace(/\/+$/, '');
 let warned = false;
 
 /** R2 공개 URL로 src·srcset을 만든다. R2_PUBLIC_URL이 없으면 null을 돌려 자리표시로 그린다. */

@@ -35,7 +35,7 @@ export interface AdminStore {
 export function createStore(url: string): { store: AdminStore; close: () => Promise<void> } {
   // Worker 요청 하나에 연결 하나. prepare는 Hyperdrive·프록시와 부딪히지 않게 끈다.
   const client = postgres(url, { max: 1, prepare: false, fetch_types: false, connect_timeout: 10 });
-  const db = drizzle(client);
+  const db = drizzle({ client });
 
   const store: AdminStore = {
     async syncStates() {

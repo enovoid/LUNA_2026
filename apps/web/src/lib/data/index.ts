@@ -5,6 +5,7 @@
 //   mock : 목업 데이터. PR 미리보기·로컬 개발용.
 //   (없음): DATABASE_URL이 있으면 db, 없으면 mock(경고 출력).
 //          단 CI(CI=true)에서 DATABASE_URL이 없으면 멈춘다. 비밀 값이 빠진 배포가 목업으로 나가는 것을 막는다.
+import { CI, DATABASE_URL, LUNA_DATA_SOURCE } from 'astro:env/server';
 import { mockData } from './mock';
 import type { SiteData } from './types';
 
@@ -16,10 +17,10 @@ export function loadSiteData(): Promise<SiteData> {
 }
 
 async function resolve(): Promise<SiteData> {
-  const mode = process.env.LUNA_DATA_SOURCE;
-  const url = process.env.DATABASE_URL;
+  const mode = LUNA_DATA_SOURCE;
+  const url = DATABASE_URL;
 
-  if (!mode && !url && process.env.CI) {
+  if (!mode && !url && CI) {
     throw new Error(
       '[data] CI에서 DATABASE_URL이 없습니다. 목업으로 빌드하려면 LUNA_DATA_SOURCE=mock을 지정하세요.',
     );
