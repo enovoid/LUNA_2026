@@ -1,6 +1,5 @@
 // 멤버 타일을 누르면 시트(<dialog>)를 열고, 주소에 #member-… 를 남겨 링크로 공유할 수 있게 한다.
 // 수상 페이지의 /members#member-… 링크로 들어오면 해당 시트를 바로 연다.
-// 타일은 기수별·직군별 보기에 한 번씩 있어서 같은 시트를 두 타일이 연다(data-member-open = 시트 id).
 const sheets = new Map<string, HTMLDialogElement>();
 for (const d of document.querySelectorAll<HTMLDialogElement>('dialog[data-member-sheet]')) {
   sheets.set(d.id, d);

@@ -1,74 +1,43 @@
 ---
 import EmptyState from '../components/EmptyState.astro';
-import Filter from '../components/Filter.astro';
-import FilterBoot from '../components/FilterBoot.astro';
 import MemberCard from '../components/MemberCard.astro';
 import MemberSheet from '../components/MemberSheet.astro';
-import MemberViewBoot from '../components/MemberViewBoot.astro';
-import MemberViewToggle from '../components/MemberViewToggle.astro';
 import PageHead from '../components/PageHead.astro';
 import Base from '../layouts/Base.astro';
-import { groupMembersByGeneration, groupMembersByPosition, uniqueSorted } from '../lib/content';
+import { groupMembersByGeneration } from '../lib/content';
 import { loadSiteData } from '../lib/data';
 
 const { members } = await loadSiteData();
-const views = [
-  {
-    key: 'generation',
-    groups: groupMembersByGeneration(members).map((g) => ({
-      title: g.generation,
-      members: g.members,
-    })),
-    detail: 'position',
-  },
-  {
-    key: 'position',
-    groups: groupMembersByPosition(members).map((g) => ({ title: g.position, members: g.members })),
-    detail: 'generation',
-  },
-] as const;
-const positions = uniqueSorted(members.map((m) => m.position));
+const groups = groupMembersByGeneration(members);
 ---
 
 <Base title="멤버" description="루나를 만들어 가는 사람들을 기수별로 소개합니다." current="members">
-  <PageHead title="멤버" lead="루나를 만들어 가는 사람들입니다.">
-    <div class="controls">
-      {members.length > 0 && <MemberViewToggle />}
-      <Filter label="직군" param="position" options={positions} unit="명" />
-    </div>
-  </PageHead>
+  <PageHead title="멤버" lead="루나를 만들어 가는 사람들입니다." />
 
-  <div class="container-page page-body" data-filter-scope="position">
+  <div class="container-page page-body">
     {
       members.length === 0 ? (
         <EmptyState title="아직 소개할 멤버가 없어요" message="멤버가 등록되면 기수별로 보여요." />
       ) : (
-        views.map((v) => (
-          <div class="view" data-member-view={v.key} hidden={v.key !== 'generation'}>
-            {v.groups.map((g, i) => (
-              <section class="gen" data-filter-group aria-labelledby={`${v.key}-${i}`}>
-                <div class="gen-head">
-                  <h2 id={`${v.key}-${i}`}>{g.title}</h2>
-                  <span>{g.members.length}명</span>
-                </div>
-                <ul class="member-grid">
-                  {g.members.map((m) => (
-                    <li data-filter-item data-position={m.position}>
-                      <MemberCard member={m} detail={v.detail} />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
+        groups.map((g) => (
+          <section class="gen" aria-labelledby={`gen-${g.generation}`}>
+            <div class="gen-head">
+              <h2 id={`gen-${g.generation}`}>{g.generation}</h2>
+              <span>{g.members.length}명</span>
+            </div>
+            <ul class="member-grid">
+              {g.members.map((m) => (
+                <li>
+                  <MemberCard member={m} />
+                </li>
+              ))}
+            </ul>
+          </section>
         ))
       )
     }
-    <EmptyState title="이 직군의 멤버가 없어요" message="다른 직군을 골라 보세요." filterEmpty />
   </div>
   {members.map((m) => <MemberSheet member={m} />)}
-  <FilterBoot param="position" />
-  <MemberViewBoot />
 </Base>
 
 <script>
@@ -76,21 +45,6 @@ const positions = uniqueSorted(members.map((m) => m.position));
 </script>
 
 <style>
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    max-width: 100%;
-  }
-  .view {
-    display: flex;
-    flex-direction: column;
-    gap: 40px;
-  }
-  .view[hidden] {
-    display: none;
-  }
   .page-body {
     display: flex;
     flex-direction: column;

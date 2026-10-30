@@ -7,12 +7,9 @@ import Picture from './Picture.astro';
 
 interface Props {
   member: Member;
-  /** 이름 아래 한 줄. 기수별 보기에서는 직군, 직군별 보기에서는 기수를 보여 준다. */
-  detail: 'position' | 'generation';
 }
-const { member, detail } = Astro.props;
+const { member } = Astro.props;
 const anchor = memberAnchor(member);
-const sub = detail === 'position' ? member.position : member.lunaGeneration;
 ---
 
 <button type="button" class="member pressable" aria-haspopup="dialog" aria-controls={anchor} data-member-open={anchor}>
@@ -21,7 +18,7 @@ const sub = detail === 'position' ? member.position : member.lunaGeneration;
   </Picture>
   <span class="member-text">
     <span class="member-name">{member.name}</span>
-    {sub && <span class="member-position">{sub}</span>}
+    {member.position && <span class="member-position">{member.position}</span>}
   </span>
 </button>
 
