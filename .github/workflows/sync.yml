@@ -23,13 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          persist-credentials: false
+      # pnpm(packageManager)과 Node.js(devEngines.runtime)를 package.json에서 읽어 설치하고 pnpm install까지 한다.
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        with:
+          cache: true
+          require-lockfile: true
       - name: Notion → Postgres · R2
         # API로 부르면 입력이 문자열 'true'로 올 수 있어 두 경우를 다 본다.
         run: pnpm --filter @luna/sync start ${{ (inputs.full == true || inputs.full == 'true') && '--full' || '' }}
