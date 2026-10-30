@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint & format (Biome)
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: 마이그레이션 검증 (적용 + 스키마와 일치 여부)
+        run: |
+          pnpm db:migrate
+          pnpm --filter @luna/db generate --name ci-drift-check
+          git diff --exit-code --stat -- packages/db/drizzle || (echo "::error::schema.ts와 마이그레이션이 다릅니다. pnpm db:generate 후 커밋하세요." && exit 1)
+          test -z "$(git status --porcelain packages/db/drizzle)" || (echo "::error::마이그레이션이 누락되었습니다. pnpm db:generate 후 커밋하세요." && exit 1)
+      - name: Build
+        run: pnpm build

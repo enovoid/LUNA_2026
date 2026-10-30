@@ -1,0 +1,11 @@
+{
+  "name": "@luna/sync",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@luna/db": "workspace:*"
+  }
+}
