@@ -1,3 +1,4 @@
+import { isAdminCreated } from '@luna/db/content';
 import type { PageObjectResponse } from '@notionhq/client';
 import notionSdk from '@notionhq/client';
 import PQueue from 'p-queue';
@@ -281,8 +282,9 @@ async function syncDatabase(
   await work.onIdle();
 
   // 삭제 감지: 지금 Notion에 살아 있는 페이지 목록과 DB를 비교한다(휴지통·보관 페이지는 목록에 없다).
+  // 관리자 페이지에서 만든 행은 원래 Notion에 없으므로 건드리지 않는다.
   const liveIds = await notion.listPageIds(source.dataSourceId, titlePropertyId(source.schema));
-  const toDelete = [...existing.keys()].filter((id) => !liveIds.has(id));
+  const toDelete = [...existing.keys()].filter((id) => !liveIds.has(id) && !isAdminCreated(id));
   if (toDelete.length > 0 && liveIds.size === 0 && !options.full) {
     // 권한이 빠지거나 잘못된 DB를 가리켜 빈 목록이 오면 전부 지워 버릴 수 있다. 정말 비운 거라면 --full로 실행.
     result.errors.push(

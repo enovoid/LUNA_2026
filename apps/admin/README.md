@@ -7,7 +7,7 @@ Railway 서비스 하나가 다음을 모두 맡는다. 주소도 하나다(`/`�
 | 공개 사이트        | Astro가 DB를 읽어 미리 만든 HTML·사진 파일을 그대로 내보낸다. 방문자 요청은 Notion에도 DB에도 닿지 않는다(`site.ts`)      |
 | 사이트 다시 만들기 | 서버 시작 때, 동기화로 바뀐 게 있을 때, 관리자 페이지에서 저장했을 때, 매일 0시(한국 시간). 실패하면 이전 사이트가 남는다 |
 | Notion 동기화      | 15분마다 `@luna/sync`를 자식 프로세스로 실행(`jobs.ts`). 관리자 페이지의 "지금 다시 동기화"도 같은 경로                   |
-| 관리자 페이지      | 동기화 상태·오류, 작업 기록, 모집 정보(기수·상태·시작일·마감일·대상·링크), 연락처·SNS                                     |
+| 관리자 페이지      | 멤버·수상·프로젝트·FAQ 추가·수정·삭제(사진 포함), Notion 내보내기 zip 가져오기, 모집 정보, 연락처·SNS, 작업 기록          |
 
 ```
 Notion ─(15분마다, 바뀐 페이지만)→ [이 서버: sync 자식 프로세스] ─→ Railway Postgres
@@ -25,14 +25,31 @@ Notion ─(15분마다, 바뀐 페이지만)→ [이 서버: sync 자식 프로�
 | 시작·마감일 | 시작일 전에는 일정만, 기간 안에는 지원하기 버튼, 마감일 다음 날부터는 "모집 마감". 매일 0시에 다시 만든다 |
 | 지원서 링크 | 없으면 지원하기 버튼을 보이지 않는다                                                                      |
 
+## 콘텐츠 직접 관리
+
+- 메뉴의 **멤버·수상·프로젝트·FAQ**에서 목록을 보고 추가·수정·삭제한다(`content.ts`가 칸과 검사 규칙, `store.ts`가 DB). 동기화·가져오기와 같은 테이블이다.
+- 여기서 만든 행의 `notion_id`는 `admin:<uuid>`다. Notion 동기화와 가져오기는 이 행을 지우지 않는다.
+- Notion에서 온 행도 고칠 수 있지만, 나중에 Notion에서 그 페이지를 고치면 Notion 내용으로 바뀐다(화면에 안내가 뜬다).
+- **사진**: 파일을 고르면 미리 보기가 바로 뜨고 뒤에서 `/admin/upload/<table>`로 올라간다(진행률 표시). 서버는 앞 바이트로 형식(JPG·PNG·WebP·AVIF·GIF)을 확인하고, 20MB·약 5천만 픽셀까지만 받고, 동기화와 같은 방식으로 WebP 480·960·1600으로 다시 만들어 `image_files`에 넣는다(EXIF·GPS 제거, 원본은 저장하지 않음). 올리는 중에 저장을 누르면 끝나는 대로 저장된다. JS가 없으면 폼에 파일이 같이 간다.
+- 저장·삭제하면 바로 목록으로 돌아오고 사이트는 뒤에서 다시 만든다. 머리글의 상태 표시("사이트에 반영 중…" → "사이트에 반영됐어요")가 몇 초마다 바뀐다(`/admin/status.json`).
+- 저장하지 않은 사진은 Notion 동기화가 유예(기본 2시간) 뒤 지운다.
+
+## Notion 내보내기 가져오기
+
+홈의 "Notion 내보내기 가져오기"에 Notion에서 **Markdown & CSV**로 내보낸 zip(200MB까지)을 올리면, 서버가 파일을 임시 폴더에 두고 `pnpm --filter @luna/sync import:start <zip>`을 작업으로 실행한다. 올리기는 진행률과 함께 바로 끝나고 가져오기는 뒤에서 한다. 성공(0)·일부 성공(1)이면 사이트를 다시 만들고, zip은 끝나면 지운다. 결과는 "최근 작업"에 남는다.
+
 ## 로그인과 보안
 
 - **Google 계정**으로 들어온다(OpenID Connect: state·nonce 확인, Google 공개 키로 id_token 서명·발급자·대상 검증, 이메일 확인된 계정만). 공용 비밀번호는 없다.
 - 들어올 수 있는 사람: Railway 변수 `ADMIN_EMAILS`(쉼표로 구분, 화면에서 못 지움) + 관리자 화면 "운영진"에서 추가한 이메일(`site_settings`의 `admins`). 사람이 바뀌면 화면에서 추가·빼기만 하면 된다.
 - 누가 설정을 바꿨는지 `site_settings.updated_by`에 Google 이메일로 남는다.
-- 세션은 서명한 쿠키(`__Host-luna_admin`, HttpOnly·Secure·SameSite=Lax, 12시간). `GOOGLE_CLIENT_SECRET`을 바꾸면 모든 세션이 끊긴다. 운영진에서 뺀 사람의 세션은 최대 12시간 뒤 끝난다.
-- 쓰기(POST)는 같은 출처에서 보낸 폼만 받는다(`Origin` 확인, CSRF 방지).
-- 관리자 화면은 `no-store`, `noindex`, CSP(`default-src 'none'`, 스크립트 없음), `frame-ancestors 'none'`.
+- 세션은 서명한 쿠키(`__Host-luna_admin`, HttpOnly·Secure·SameSite=Lax, 12시간). `GOOGLE_CLIENT_SECRET`을 바꾸면 모든 세션이 끊긴다. 요청마다 운영진 목록을 다시 확인하므로 운영진에서 빼면 바로 막힌다.
+- 모든 확인은 서버에서 한다. 브라우저로 가는 `admin.js`는 업로드 진행률·상태 표시 같은 편의 기능뿐이고 비밀 값이 없다. 그래서 코드를 난독화해도 보안은 나아지지 않는다(공개 사이트는 Astro가 압축해 내보낸다).
+- 쓰기(POST)는 같은 출처에서 보낸 요청만 받는다(`Origin` 확인, CSRF 방지).
+- 요청 횟수 제한(`rate-limit.ts`, 서버 메모리): IP마다 분당 300회, 로그인 10분에 20회. 운영진마다 쓰기 분당 60회, 업로드 10분에 60회. 넘으면 429.
+- 본문 크기: 폼 64KB, 사진 20MB, zip 200MB. 로그인 확인 전에는 본문을 읽지 않고, 넘으면 그 자리에서 끊는다(`server.ts`).
+- 입력은 칸마다 길이·숫자·날짜를 검사하고 제어 문자를 지운다. 화면에 넣는 값은 모두 HTML 이스케이프한다.
+- 관리자 응답 헤더: `no-store`, `noindex`, CSP(`script-src 'self'`, 인라인 스크립트·스타일 금지, `frame-ancestors 'none'`, `form-action 'self'`), HSTS, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, `Permissions-Policy`.
 
 ## Railway 설정 체크리스트
 
@@ -62,7 +79,7 @@ Notion ─(15분마다, 바뀐 페이지만)→ [이 서버: sync 자식 프로�
 
 1. [ ] [console.cloud.google.com](https://console.cloud.google.com) → 프로젝트 만들기(예: `luna-admin`)
 2. [ ] **Google Auth Platform**(또는 APIs & Services → OAuth consent screen) → 시작하기: 앱 이름 `LUNA 관리자`, 지원 이메일, 대상 **External**
-3. [ ] **Audience**에서 앱을 **Publish(In production)** 로 바꾼다. 이메일·프로필만 요청하므로 Google 심사가 필요 없고, Testing으로 두면 테스트 사용자로 등록한 계정만 로그인된다
+3. [ ] **대상(Audience) → 테스트 사용자**에 운영진 Gmail을 넣는다. 게시(Publish)하려면 브랜딩에 내 도메인·개인정보처리방침이 필요한데 `*.up.railway.app`은 등록할 수 없어서, 내 도메인이 생기기 전에는 "테스트 중"으로 두고 운영진을 테스트 사용자로 넣는다(최대 100명). 운영진을 새로 추가하면 여기에도 넣는다
 4. [ ] **Clients → Create client** → 유형 **Web application** → Authorized redirect URIs에 `https://<도메인>/admin/auth/callback` 추가(Railway 도메인과 내 도메인을 둘 다 쓰면 둘 다)
 5. [ ] 만들어진 Client ID와 Client secret을 Railway 변수 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`에 넣는다
 

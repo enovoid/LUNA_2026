@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -99,5 +99,26 @@ describe('작업', () => {
     jobs.sync({ full: false, reason: 'a', trigger: 'cron' });
     await jobs.idle();
     expect(jobs.status().recent[0]).toMatchObject({ kind: 'sync', ok: false, output: 'sync log' });
+  });
+});
+
+describe('Notion 내보내기 가져오기', () => {
+  it('가져오기를 실행하고 성공·일부 성공이면 사이트를 다시 만든 뒤 zip을 지운다', async () => {
+    for (const [code, builds] of [
+      [0, 1],
+      [1, 1],
+      [2, 0],
+    ] as const) {
+      const { jobs, calls } = setup({ syncCode: code });
+      const file = join(workDir, `export-${code}.zip`);
+      await writeFile(file, 'PK');
+      jobs.importZip(file, '김운영');
+      await jobs.idle();
+      expect(calls[0]?.args).toEqual(['--filter', '@luna/sync', 'import:start', file]);
+      expect(calls[0]?.env.DATABASE_URL).toBe('postgres://x');
+      expect(calls.filter((c) => c.args.includes('@luna/web'))).toHaveLength(builds);
+      expect(jobs.status().recent.at(-1)).toMatchObject({ kind: 'import', ok: code === 0 });
+      await expect(readFile(file)).rejects.toThrow();
+    }
   });
 });

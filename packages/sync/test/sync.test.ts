@@ -237,19 +237,28 @@ describe('runSync', () => {
       member('m2', '2026-10-29T10:00:00.000Z', 'B'),
     ];
     await runSync(run(), deps);
+    // 관리자 페이지에서 만든 행은 Notion에 없어도 지우지 않는다.
+    store.rows.members.set('admin:x1', {
+      notionLastEditedAt: new Date('2026-10-29T10:00:00.000Z'),
+      imageKey: null,
+      imageWidth: null,
+      imageHeight: null,
+      fields: { name: 'C' },
+    });
     notion.pages.members = [notion.pages.members[0]!];
     const removed = await runSync(run(), deps);
     expect(removed.results.members?.deleted).toBe(1);
-    expect([...store.rows.members.keys()]).toEqual(['m1']);
+    expect([...store.rows.members.keys()]).toEqual(['m1', 'admin:x1']);
 
     notion.pages.members = [];
     const guarded = await runSync(run(), deps);
     expect(guarded.results.members?.deleted).toBe(0);
     expect(guarded.errors.join()).toContain('--full');
-    expect(store.rows.members.size).toBe(1);
+    expect(store.rows.members.size).toBe(2);
 
     const forced = await runSync(run({ full: true }), deps);
     expect(forced.results.members?.deleted).toBe(1);
+    expect([...store.rows.members.keys()]).toEqual(['admin:x1']);
   });
 
   it('DB 하나의 조회가 실패해도 다른 DB는 계속한다', async () => {

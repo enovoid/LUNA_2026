@@ -187,6 +187,9 @@ importers:
       '@luna/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@luna/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(postgres@3.4.9)
@@ -196,6 +199,9 @@ importers:
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
+      sharp:
+        specifier: ^0.35.5
+        version: 0.35.5(@types/node@26.6.6)
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
