@@ -25,7 +25,9 @@ export const mockData: SiteData = {
   settings: {
     recruit: {
       generation: '9기',
-      period: '3월 2일 ~ 3월 15일',
+      status: 'open',
+      startDate: '',
+      endDate: '',
       target: '재학생 누구나',
       applyUrl: 'https://example.com/apply',
     },

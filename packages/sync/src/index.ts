@@ -1,6 +1,6 @@
 import { ConfigError, loadConfig, parseArgs } from './config.js';
 import { PostgresStore } from './db-store.js';
-import { createDispatcher } from './dispatch.js';
+import { createFileNotifier } from './dispatch.js';
 import { createConsoleLogger, errorMessage } from './logger.js';
 import { NotionApi } from './notion/client.js';
 import { SchemaMismatchError } from './notion/schema.js';
@@ -36,7 +36,7 @@ async function main(): Promise<number> {
       db = new PostgresStore(config.databaseUrl);
       store = options.dryRun ? readOnly(db) : db;
       if (!options.dryRun) {
-        // SYNC_TRIGGER: 누가 시작했는지(기본 cron, 관리자 페이지의 수동 실행은 admin). 관리자 페이지에 보인다.
+        // SYNC_TRIGGER: 누가 시작했는지(15분 자동 실행은 cron, 관리자 페이지의 수동 실행은 admin). 관리자 페이지에 보인다.
         const lockedAt = await db.acquireRunLock(
           process.env.SYNC_TRIGGER?.trim() || 'cron',
           RUN_LOCK_TTL_MS,
@@ -59,7 +59,8 @@ async function main(): Promise<number> {
       notion,
       store,
       objects: options.dryRun ? undefined : db?.images,
-      dispatch: options.dryRun || !config.dispatch ? undefined : createDispatcher(config.dispatch),
+      dispatch:
+        options.dryRun || !config.notifyFile ? undefined : createFileNotifier(config.notifyFile),
       logger,
       databaseIds: config.notionDatabaseIds,
       orphanGraceMs: config.orphanGraceMs,

@@ -85,7 +85,7 @@ export const siteSettings = pgTable('site_settings', {
   key: text('key').primaryKey(),
   value: jsonb('value').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  /** 마지막으로 고친 운영진(Cloudflare Access 이메일) */
+  /** 마지막으로 고친 운영진(관리자 페이지 로그인 때 적은 이름) */
   updatedBy: text('updated_by'),
 });
 

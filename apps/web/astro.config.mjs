@@ -7,6 +7,8 @@ const site = process.env.SITE_URL ?? 'https://luna.example.com';
 export default defineConfig({
   site,
   output: 'static',
+  // 사이트 서버(apps/admin)는 빌드마다 새 폴더를 만들고, 성공하면 그 폴더로 바꾼다.
+  outDir: process.env.LUNA_OUT_DIR || './dist',
   trailingSlash: 'never',
   // CSS를 HTML에 넣어 첫 화면을 막는 요청 왕복을 하나 없앤다(압축 후 약 19KB, 모바일 FCP 개선).
   build: { format: 'file', inlineStylesheets: 'always' },

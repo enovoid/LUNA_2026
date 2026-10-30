@@ -1,40 +1,61 @@
-// 요청 처리. 모든 주소는 Cloudflare Access를 통과해야 하고(authenticate), 쓰기 요청은 같은 출처에서 온 폼만 받는다.
+// 요청 처리. /admin 아래는 관리자 페이지(/admin/login 말고는 로그인 필요, 쓰기 요청은 같은 출처의 폼만),
+// 나머지 주소는 미리 만든 공개 사이트 파일이다.
 import { parseSettings, SETTINGS_KEYS, type SettingsKey } from '@luna/db/settings';
-import type { GitHub } from './github.js';
+import { type Auth, AuthError, type Viewer } from './auth.js';
+import type { Jobs } from './jobs.js';
+import type { Site } from './site.js';
 import type { AdminStore } from './store.js';
-import { isNotice, type Loaded, type Notice, type PageModel, renderPage } from './views.js';
+import {
+  isNotice,
+  type Loaded,
+  type Notice,
+  type PageModel,
+  renderLoginPage,
+  renderPage,
+} from './views.js';
 
 export interface AppDeps {
-  /** Access JWT를 검증해 운영진 이메일을 돌려준다. 실패하면 던진다. */
-  authenticate(request: Request): Promise<{ email: string }>;
+  auth: Auth;
   /** DB가 설정되지 않았으면 던진다. */
   store(): AdminStore;
-  /** GITHUB_TOKEN이 설정되지 않았으면 던진다. */
-  github(): GitHub;
-  siteUrl?: string;
+  site: Site;
+  jobs: Jobs;
   now?: () => Date;
   log?: (message: string) => void;
 }
 
 const BASE = '/admin';
 
-export async function handle(request: Request, deps: AppDeps): Promise<Response> {
+/** client: 로그인 실패 횟수를 셀 접속 주소. */
+export async function handle(request: Request, deps: AppDeps, client = ''): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '') || '/';
 
-  let viewer: { email: string };
-  try {
-    viewer = await deps.authenticate(request);
-  } catch (error) {
-    deps.log?.(`접근 거부: ${message(error)}`);
-    return text(
-      403,
-      '접근 권한이 없습니다. 운영진 계정으로 Cloudflare Access 로그인이 필요합니다.',
-    );
+  // Railway는 새 배포가 /health에 200을 줄 때 트래픽을 넘긴다: 첫 빌드가 끝나기 전에는 이전 배포가 계속 응답한다.
+  if (path === '/health') {
+    return deps.site.ready() ? text(200, 'ok') : text(503, '사이트를 만드는 중');
+  }
+  if (path !== BASE && !path.startsWith(`${BASE}/`)) return deps.site.serve(request);
+  if (path === BASE && url.pathname !== `${BASE}/`) return redirect(`${BASE}/`);
+
+  if (request.method === 'POST' && !isSameOrigin(request, url)) {
+    return text(403, '다른 사이트에서 보낸 요청은 받지 않습니다.');
   }
 
-  if (path === '/' || (path === BASE && url.pathname !== `${BASE}/`)) {
-    return redirect(`${BASE}/`);
+  const viewer = await deps.auth.viewer(request);
+
+  if (path === `${BASE}/login`) {
+    if (request.method === 'POST') return login(request, deps, client);
+    if (viewer) return redirect(`${BASE}/`);
+    return html(renderLoginPage({}));
+  }
+  if (path === `${BASE}/logout` && request.method === 'POST') {
+    return redirect(`${BASE}/login`, deps.auth.logoutCookie());
+  }
+
+  if (!viewer) {
+    if (request.method === 'GET') return redirect(`${BASE}/login`);
+    return text(403, '로그인이 필요합니다.');
   }
 
   if (request.method === 'GET' && path === BASE) {
@@ -43,47 +64,46 @@ export async function handle(request: Request, deps: AppDeps): Promise<Response>
   }
 
   if (request.method === 'POST') {
-    if (!isSameOrigin(request, url)) return text(403, '다른 사이트에서 보낸 요청은 받지 않습니다.');
     if (path === `${BASE}/sync`) return runSync(request, deps, viewer);
-    if (path === `${BASE}/deploy`) return deploy(deps, viewer);
+    if (path === `${BASE}/build`) return build(deps, viewer);
     const key = SETTINGS_KEYS.find((k) => path === `${BASE}/settings/${k}`);
     if (key) return saveSettings(request, deps, viewer, key);
   }
 
-  if (path.startsWith(BASE)) return text(404, '없는 주소입니다.');
-  return text(404, 'Not found');
+  return text(404, '없는 주소입니다.');
 }
 
-async function runSync(request: Request, deps: AppDeps, viewer: { email: string }) {
+async function login(request: Request, deps: AppDeps, client: string) {
+  const form = await request.formData();
+  const name = String(form.get('name') ?? '');
+  try {
+    const cookie = await deps.auth.login({
+      name,
+      password: String(form.get('password') ?? ''),
+      client,
+    });
+    deps.log?.(`로그인: ${name.trim()}`);
+    return redirect(`${BASE}/`, cookie);
+  } catch (error) {
+    if (!(error instanceof AuthError)) throw error;
+    deps.log?.(`로그인 실패(${client}): ${error.message}`);
+    return html(renderLoginPage({ error: error.message, name }), 401);
+  }
+}
+
+async function runSync(request: Request, deps: AppDeps, viewer: Viewer) {
   const form = await request.formData();
   const full = form.get('full') === '1';
-  try {
-    await deps.github().runSync({ full });
-    deps.log?.(`동기화 요청: ${viewer.email}${full ? ' (--full)' : ''}`);
-    return redirect(`${BASE}/?notice=sync-started`);
-  } catch (error) {
-    deps.log?.(`동기화 요청 실패: ${message(error)}`);
-    return redirect(`${BASE}/?notice=github-failed`);
-  }
+  deps.jobs.sync({ full, reason: viewer.name, trigger: 'admin' });
+  return redirect(`${BASE}/?notice=sync-started`);
 }
 
-async function deploy(deps: AppDeps, viewer: { email: string }) {
-  try {
-    await deps.github().deploySite();
-    deps.log?.(`배포 요청: ${viewer.email}`);
-    return redirect(`${BASE}/?notice=deploy-started`);
-  } catch (error) {
-    deps.log?.(`배포 요청 실패: ${message(error)}`);
-    return redirect(`${BASE}/?notice=github-failed`);
-  }
+function build(deps: AppDeps, viewer: Viewer) {
+  deps.jobs.build(viewer.name);
+  return redirect(`${BASE}/?notice=build-started`);
 }
 
-async function saveSettings(
-  request: Request,
-  deps: AppDeps,
-  viewer: { email: string },
-  key: SettingsKey,
-) {
+async function saveSettings(request: Request, deps: AppDeps, viewer: Viewer, key: SettingsKey) {
   const form = await request.formData();
   const input: Record<string, string> = {};
   for (const [name, value] of form) if (typeof value === 'string') input[name] = value;
@@ -95,47 +115,43 @@ async function saveSettings(
   }
 
   try {
-    await deps.store().saveSetting(key, parsed.value, viewer.email);
-    deps.log?.(`설정 저장(${key}): ${viewer.email}`);
+    await deps.store().saveSetting(key, parsed.value, viewer.name);
+    deps.log?.(`설정 저장(${key}): ${viewer.name}`);
   } catch (error) {
     deps.log?.(`설정 저장 실패(${key}): ${message(error)}`);
     return redirect(`${BASE}/?notice=db-failed`);
   }
 
-  // 사이트는 빌드할 때 설정을 읽으므로 저장한 뒤 바로 다시 배포한다.
-  try {
-    await deps.github().deploySite();
-    return redirect(`${BASE}/?notice=saved`);
-  } catch (error) {
-    deps.log?.(`설정 저장 뒤 배포 요청 실패: ${message(error)}`);
-    return redirect(`${BASE}/?notice=saved-deploy-failed`);
-  }
+  // 사이트는 빌드할 때 설정을 읽으므로 저장한 뒤 바로 다시 만든다.
+  deps.jobs.build(`${viewer.name} · ${SETTINGS_LABELS[key]} 저장`);
+  return redirect(`${BASE}/?notice=saved`);
 }
+
+const SETTINGS_LABELS: Record<SettingsKey, string> = { recruit: '모집 정보', contact: '연락처' };
 
 async function loadPage(
   deps: AppDeps,
-  viewer: { email: string },
+  viewer: Viewer,
   notice: Notice | undefined,
 ): Promise<PageModel> {
-  const [sync, settings, syncRuns, deployRuns] = await Promise.all([
+  const [sync, settings, generations] = await Promise.all([
     load(() => deps.store().syncStates()),
     load(() => deps.store().settings()),
-    load(() => deps.github().recentRuns('sync.yml', 3)),
-    load(() => deps.github().recentRuns('deploy.yml', 5)),
+    load(() => deps.store().generations()),
   ]);
   return {
     viewer,
-    siteUrl: deps.siteUrl,
     notice,
     sync,
     settings,
-    syncRuns,
-    deployRuns,
+    generations,
+    jobs: deps.jobs.status(),
+    siteReady: deps.site.ready(),
     now: deps.now?.() ?? new Date(),
   };
 }
 
-/** 한 구역이 실패해도(DB 끊김, GitHub 장애) 나머지 화면은 그린다. */
+/** 한 구역이 실패해도(DB 끊김 등) 나머지 화면은 그린다. */
 async function load<T>(fn: () => Promise<T>): Promise<Loaded<T>> {
   try {
     return { ok: true, value: await fn() };
@@ -145,12 +161,19 @@ async function load<T>(fn: () => Promise<T>): Promise<Loaded<T>> {
 }
 
 /**
- * Access 쿠키는 다른 사이트에서 보낸 폼에도 실릴 수 있으므로(CSRF) 출처를 확인한다.
+ * 세션 쿠키는 다른 사이트에서 보낸 폼에도 실릴 수 있으므로(CSRF) 출처를 확인한다.
  * 브라우저는 POST에 Origin을 붙이고, 없으면 Sec-Fetch-Site로 판단한다.
+ * 프록시 뒤라 프로토콜은 믿기 어려워 호스트만 비교한다.
  */
 export function isSameOrigin(request: Request, url: URL): boolean {
   const origin = request.headers.get('origin');
-  if (origin) return origin === url.origin;
+  if (origin) {
+    try {
+      return new URL(origin).host === url.host;
+    } catch {
+      return false;
+    }
+  }
   return request.headers.get('sec-fetch-site') === 'same-origin';
 }
 
@@ -164,7 +187,11 @@ const SECURITY_HEADERS = {
 };
 
 function page(model: PageModel, status = 200): Response {
-  return new Response(renderPage(model), {
+  return html(renderPage(model), status);
+}
+
+function html(body: string, status = 200): Response {
+  return new Response(body, {
     status,
     headers: { 'Content-Type': 'text/html; charset=utf-8', ...SECURITY_HEADERS },
   });
@@ -178,8 +205,10 @@ function text(status: number, body: string): Response {
 }
 
 /** POST 뒤에는 303으로 GET 화면에 보낸다(새로고침해도 다시 보내지 않게). */
-function redirect(location: string): Response {
-  return new Response(null, { status: 303, headers: { Location: location, ...SECURITY_HEADERS } });
+function redirect(location: string, cookie?: string): Response {
+  const headers = new Headers({ Location: location, ...SECURITY_HEADERS });
+  if (cookie) headers.append('Set-Cookie', cookie);
+  return new Response(null, { status: 303, headers });
 }
 
 function message(error: unknown): string {

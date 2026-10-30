@@ -7,8 +7,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check",
-    "tokens": "node scripts/tokens-to-css.mjs && biome format --write src/styles/tokens.css",
-    "deploy": "wrangler deploy"
+    "tokens": "node scripts/tokens-to-css.mjs && biome format --write src/styles/tokens.css"
   },
   "dependencies": {
     "@luna/db": "workspace:*",
@@ -23,7 +22,6 @@
     "@types/node": "^26.6.6",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "~6.0.3",
-    "wrangler": "^4.156.0"
+    "typescript": "~6.0.3"
   }
 }

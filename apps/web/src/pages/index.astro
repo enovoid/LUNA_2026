@@ -1,5 +1,5 @@
 ---
-import { isRecruiting as hasRecruit } from '@luna/db/settings';
+import { recruitPeriod, recruitState } from '@luna/db/settings';
 import EmptyState from '../components/EmptyState.astro';
 import FaqList from '../components/FaqList.astro';
 import Logo from '../components/Logo.astro';
@@ -19,7 +19,15 @@ import { loadSiteData } from '../lib/data';
 
 const { members, awards, projects, faqs, settings } = await loadSiteData();
 const { recruit, contact } = settings;
-const isRecruiting = hasRecruit(recruit);
+// 모집 상태는 빌드한 날(한국 날짜) 기준이다. 사이트 서버가 매일 0시에 다시 빌드한다.
+const recruiting = recruitState(recruit);
+const isRecruiting = recruiting === 'open';
+const recruitNote = {
+  none: '',
+  upcoming: '곧 지원을 받아요',
+  open: '',
+  closed: '모집이 마감됐어요. 다음 모집 때 만나요!',
+}[recruiting];
 const stats = computeStats(members, awards);
 const sortedFaqs = sortFaqs(faqs);
 // 홈에는 앞의 질문 몇 개만 보이고 나머지는 FAQ 페이지에서 본다.
@@ -73,7 +81,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
       }
       <div class="about-actions" data-reveal>
         <a href="/projects" class="btn btn-primary">프로젝트</a>
-        <a href={isRecruiting ? "#apply" : "/faq"} class="btn btn-ghost">지원</a>
+        <a href={recruiting === "none" ? "/faq" : "#apply"} class="btn btn-ghost">지원</a>
       </div>
     </div>
   </section>
@@ -185,18 +193,23 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     </section>
 
     {
-      isRecruiting && (
+      recruiting !== "none" && (
         <section id="apply" aria-labelledby="apply-title" class="container-page">
           <div class="apply">
             <Logo size={320} class="apply-mark" />
             <div class="apply-text">
-              <span class="apply-eyebrow">RECRUITING</span>
-              <h2 id="apply-title">LUNA {recruit.generation} 모집</h2>
-              <p>{[recruit.period, recruit.target].filter(Boolean).join(" · ")}</p>
+              <span class="apply-eyebrow">{recruiting === "closed" ? "CLOSED" : "RECRUITING"}</span>
+              <h2 id="apply-title">LUNA {recruit.generation} {recruiting === "closed" ? "모집 마감" : "모집"}</h2>
+              <p>{[recruitPeriod(recruit), recruit.target].filter(Boolean).join(" · ")}</p>
+              {recruitNote && <p class="apply-note">{recruitNote}</p>}
             </div>
-            <a href={recruit.applyUrl} class="btn btn-primary apply-cta" target="_blank" rel="noopener">
-              지원하기<span class="sr-only">(새 창)</span>
-            </a>
+            {
+              isRecruiting && (
+                <a href={recruit.applyUrl} class="btn btn-primary apply-cta" target="_blank" rel="noopener">
+                  지원하기<span class="sr-only">(새 창)</span>
+                </a>
+              )
+            }
           </div>
         </section>
       )
@@ -547,6 +560,10 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
   }
   .apply-cta {
     position: relative;
+  }
+  .apply .apply-note {
+    font-weight: 600;
+    color: var(--text-2);
   }
 </style>
 
