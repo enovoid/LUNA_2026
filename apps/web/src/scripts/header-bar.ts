@@ -1,4 +1,4 @@
-// 헤더 바로 아래가 배경이 꽉 찬 구역(data-header-clear: 인트로·소개)이면 유리 막대를 걷어 투명하게 둔다.
+// 헤더 바로 아래가 배경이 꽉 찬 구역(data-header-clear: 인트로)이면 유리 막대를 걷어 투명하게 둔다.
 const header = document.querySelector<HTMLElement>('[data-site-header]');
 const clearZones = document.querySelectorAll<HTMLElement>('[data-header-clear]');
 

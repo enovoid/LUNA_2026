@@ -1,6 +1,6 @@
 ---
 // 상단 내비. 홈에서는 인트로 위에 투명하게 겹치고(fixed), 다른 페이지에서는 유리 막대(sticky)다.
-// 인트로·소개처럼 배경이 꽉 찬 구역(data-header-clear) 위에서는 막대 없이 투명하고, 그 밖에서는 유리 막대가 깔린다 → scripts/header-bar.ts
+// 인트로처럼 배경이 꽉 찬 구역(data-header-clear) 위에서는 막대 없이 투명하고, 그 밖에서는 유리 막대가 깔린다 → scripts/header-bar.ts
 import { isRecruiting } from '@luna/db/settings';
 import { type NavKey, nav } from '../content/site';
 import { loadSiteData } from '../lib/data';

@@ -121,12 +121,15 @@ async function start(root: HTMLElement) {
   };
 
   // 레이아웃 값(크기가 바뀔 때만 다시 잰다). transform이 없는 상자를 재므로 애니메이션 상태와 무관하다.
-  const m = { moonPx: 0, logoPx: 1, dx: 0, dy: 0 };
+  const m = { moonPx: 0, logoPx: 1, dx: 0, dy: 0, lift: 0 };
   const measure = () => {
     const c = mobileQuery.matches ? config.mobile : config.desktop;
     const st = stage.getBoundingClientRect();
     const layerW = Math.max(st.width, st.height * c.aspect);
     m.moonPx = (layerW * c.moon * c.zoom) / 100;
+    // 세로 사진이 화면보다 길면(좁은 화면) 위·아래가 반씩 잘려 건물이 하단 탭 바 뒤로 숨는다.
+    // 첫 화면에서는 사진 아래 끝을 화면 아래 끝에 맞춰 건물을 탭 바 위로 올리고, 달이 가운데로 오는 동안(k) 원래대로 돌린다.
+    m.lift = mobileQuery.matches ? Math.max(0, (layerW / c.aspect - st.height) / 2) : 0;
     const box = logoBox.getBoundingClientRect();
     m.logoPx = box.width || 1;
     // 로고 상자 중심 → 화면 중심까지의 거리. 달이 있던 자리에서 로고가 시작한다.
@@ -146,7 +149,7 @@ async function start(root: HTMLElement) {
     const skyScale = Math.exp(logZoom * s.z);
     const cityScale = Math.exp(logZoom * 1.6 * s.zc);
     const tx = `calc(-50% + ${((50 - c.mx) * s.k).toFixed(3)}%)`;
-    const ty = `calc(-50% + ${((50 - c.my) * s.k).toFixed(3)}%)`;
+    const ty = `calc(-50% + ${((50 - c.my) * s.k).toFixed(3)}% - ${(m.lift * (1 - s.k)).toFixed(1)}px)`;
 
     // 어두운 막이 다 덮은 뒤에는 사진 레이어를 그리지 않는다(합성 비용 절약).
     const photoVisible = s.dim < 1 ? '' : 'hidden';
