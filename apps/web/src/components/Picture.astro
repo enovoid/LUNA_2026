@@ -1,5 +1,6 @@
 ---
 // R2 사진 + 자리표시. 상자는 aspect-ratio로 크기를 먼저 잡아 두므로, 사진이 늦게 오거나 실패해도 레이아웃이 흔들리지 않는다.
+// 사진이 오는 동안은 같은 상자에 스켈레톤 빛이 지나간다(.is-loading → NavPerf.astro).
 import type { ImageRef } from '../lib/data';
 import { imageSources } from '../lib/image';
 
@@ -19,7 +20,7 @@ const src = imageSources(image);
 const aspect = ratio ?? (image ? `${image.width} / ${image.height}` : '1');
 ---
 
-<div class:list={["media", className]} style={`aspect-ratio: ${aspect}`} data-fit={fit}>
+<div class:list={["media", src && "is-loading", className]} style={`aspect-ratio: ${aspect}`} data-fit={fit}>
   {
     src && (
       <img
@@ -32,7 +33,8 @@ const aspect = ratio ?? (image ? `${image.width} / ${image.height}` : '1');
         loading={eager ? "eager" : "lazy"}
         fetchpriority={eager ? "high" : undefined}
         decoding="async"
-        onerror="this.parentElement.dataset.failed=''"
+        onload="this.parentElement.classList.remove('is-loading')"
+        onerror="this.parentElement.classList.remove('is-loading');this.parentElement.dataset.failed=''"
       />
     )
   }

@@ -28,10 +28,12 @@ src/
   lib/data/              데이터 진입점(db.ts / mock.ts), 행 검증
   lib/content.ts         정렬·묶음·통계·이름 연결
   lib/image.ts           R2 srcset(480/960/1600)
-  components/            Header, TabBar, Footer, ScrollIntro, 카드, Picture, EmptyState, FilterControl(React)
-  scripts/               intro.ts(GSAP), reveal.ts, header-bar.ts
+  components/            Header, TabBar, Footer, ScrollIntro, 카드, Picture, EmptyState, Filter, NavPerf
+  scripts/               intro.ts(GSAP), reveal.ts, header-bar.ts, segmented.ts(필터), nav-pending.ts(이동 스켈레톤)
   styles/                tokens.json(디자인 시스템 원본) → tokens.css(생성), global.css(Tailwind v4 @theme)
 public/intro/            인트로 사진 4장 + 달 고해상도 2장
+public/sw.js             서비스 워커(재방문 캐시)
+public/_headers          Cloudflare 캐시 헤더
 ```
 
 - 디자인 토큰: `tokens.json`을 고친 뒤 `pnpm --filter @luna/web tokens`로 `tokens.css`를 다시 만든다.
@@ -80,7 +82,7 @@ public/intro/            인트로 사진 4장 + 달 고해상도 2장
 - 토큰: `global.css`의 `--spring-smooth|snappy|bouncy`(+`-dur`), `--press-dur`, `--press-scale`, `--fade-dur`. JS는 `lib/motion.ts`의 `springEase()`.
 - 등장: `[data-reveal]`(묶음), `[data-reveal-item]`(묶음 안 순서대로 70ms씩) → `scripts/reveal.ts`
 - 누름: `.btn`, `.pressable`, 탭 바 → 누르는 동안 0.97배, 떼면 snappy 스프링
-- 필터: 선택 표시가 미끄러짐(`FilterControl.tsx`), 카드는 View Transition으로 새 자리로 이동(`lib/filter-dom.ts`)
+- 필터: 선택 표시가 미끄러짐(`scripts/segmented.ts`), 카드는 View Transition으로 새 자리로 이동(`lib/filter-dom.ts`)
 - 페이지 이동: `@view-transition { navigation: auto }` 크로스페이드, 헤더·탭 바는 제자리
 - 동작 줄이기: 이동·확대는 모두 빼고 크로스페이드만 남긴다. 인트로는 정적 최종 화면.
 
@@ -102,7 +104,22 @@ public/intro/            인트로 사진 4장 + 달 고해상도 2장
 - 이미지·카드는 모두 `aspect-ratio` 상자에 들어가 사진이 늦어도 CLS가 생기지 않는다. 사진엔 `width`·`height`·`loading="lazy"`·`decoding="async"`.
 - 필터는 URL 쿼리가 있으면 첫 페인트 전 인라인 스크립트가 먼저 카드를 숨긴다(섬이 깨어날 때 흔들림 없음).
 - 등장 효과·헤더 전환·탭 바·인트로는 transform·opacity만 바꾼다. 헤더 유리 배경은 별도 층의 opacity로 전환한다.
-- JS(gzip): 홈 약 47KB(GSAP 코어 27 + ScrollTrigger 17 + 인트로 2 + 기타). 멤버·프로젝트·수상은 React 섬 때문에 약 70KB.
+- JS(gzip): 홈 약 50KB(GSAP 코어 27 + ScrollTrigger 17 + 인트로 3 + 기타 2). 다른 페이지는 약 3KB(필터·이동 스켈레톤·등장 효과, 모두 인라인). 예산: 홈 70KB, 나머지 50KB.
+- 필터는 React 섬 대신 정적 마크업 + 작은 스크립트(`segmented.ts`)다. React(약 65KB)를 받지 않는다.
+
+### 페이지 이동·재방문 캐시
+
+| 장치                                     | 하는 일                                                                                                                                                                                  |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Speculation Rules (`NavPerf.astro`)      | 링크에 마우스를 올리거나(약 200ms) 누르기 시작하면 다음 페이지를 미리 그려 둔다. 주 메뉴 페이지 HTML은 쉬는 시간에 미리 받는다. 지원하지 않는 브라우저는 무시(JS 0바이트)                |
+| 이동 스켈레톤 (`scripts/nav-pending.ts`) | 누르고 120ms 안에 새 페이지가 안 오면 탭 선택을 먼저 옮기고 도착할 페이지 모양(격자·비율 같음)의 스켈레톤을 덮는다. 새 페이지가 오면 View Transition 크로스페이드로 바뀐다               |
+| 사진 스켈레톤 (`Picture.astro`)          | 사진이 오는 동안 같은 상자에 빛이 지나간다. 동작 줄이기면 멈춘 회색 상자                                                                                                                 |
+| 서비스 워커 (`public/sw.js`)             | 처음 방문 때 주 메뉴 5개 페이지와 그 JS·CSS를 Cache Storage에 받아 둔다. 다음부터 페이지는 캐시를 먼저 보여 주고 뒤에서 새 HTML로 바꿔 둔다. `/admin`·다른 출처(R2 사진)는 건드리지 않음 |
+| HTTP 캐시 (`public/_headers`)            | `/_astro/*`(해시 파일) 1년 immutable, 인트로 사진 1주 + SWR, `sw.js` no-cache. HTML은 Cloudflare 기본(매번 ETag 확인)                                                                    |
+
+- 쿠키를 쓰지 않는 이유: 쿠키는 요청마다 서버로 실려 가고 한 개 4KB 남짓이라 페이지·자산을 담을 수 없다. 자산은 HTTP 캐시와 Cache Storage가 맡는다.
+- 배포 직후 첫 방문에는 예전 HTML이 한 번 보일 수 있다(뒤에서 갱신되어 다음 이동부터 새 내용). 캐시한 HTML이 쓰는 JS·CSS는 같이 받아 두므로 예전 HTML도 깨지지 않는다.
+- 캐시 형식을 바꿀 때만 `sw.js`의 `VERSION`을 올린다.
 - Pretendard는 유니코드 범위별 서브셋 woff2를 셀프 호스팅한다. 화면에 쓰인 글자 범위만 받고, Apple 기기는 시스템 서체가 먼저 잡혀 받지 않는다.
 
 ## Biome
@@ -133,4 +150,3 @@ public/intro/            인트로 사진 4장 + 달 고해상도 2장
 - 모집 기수·기간·지원 링크, 연락처·SNS: 관리자 페이지(`apps/admin`)에서 입력
 - 도메인(`SITE_URL`), Cloudflare 배포 방식 확정
 - 다크 모드
-- 멤버·프로젝트·수상 페이지 JS를 50KB 아래로 줄일지 결정(React → Preact 호환층 등)

@@ -1,4 +1,4 @@
-// 정적으로 그려 둔 카드에 필터를 적용한다. React 섬과 첫 페인트 전 인라인 스크립트가 같은 규칙을 쓴다.
+// 정적으로 그려 둔 카드에 필터를 적용한다. 세그먼트 스크립트(scripts/segmented.ts)와 첫 페인트 전 인라인 스크립트가 같은 규칙을 쓴다.
 // 규칙(인라인 스크립트도 이와 같아야 함 → components/FilterBoot.astro):
 //   [data-filter-scope=<param>] 안의 [data-filter-item]은 data-<param> 값이 같을 때만 보인다(ALL이면 전부).
 //   항목이 하나도 안 보이는 [data-filter-group]은 숨기고, 전부 숨으면 [data-filter-empty]를 보인다.

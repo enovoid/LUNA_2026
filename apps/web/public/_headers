@@ -1,0 +1,21 @@
+# Cloudflare 정적 자산 응답 헤더(Workers Static Assets가 읽고, 파일 자체는 내보내지 않는다).
+# HTML은 Cloudflare 기본값(max-age=0, must-revalidate + ETag)을 그대로 둔다: 배포하면 바로 새 내용이 보인다.
+# 같은 헤더를 여러 규칙에 쓰면 값이 쉼표로 합쳐지므로 Cache-Control은 경로마다 한 번만 쓴다.
+
+# 파일 이름에 내용 해시가 붙은 빌드 산출물(JS·CSS·폰트·SVG): 1년, 다시 묻지 않음
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 인트로 사진: 이름에 해시가 없어 1주 캐시 + 하루 동안은 낡은 것을 보여 주며 뒤에서 갱신
+/intro/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+/favicon.svg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/og.png
+  Cache-Control: public, max-age=86400
+
+# 서비스 워커는 항상 새로 확인해야 수정이 바로 퍼진다
+/sw.js
+  Cache-Control: no-cache
