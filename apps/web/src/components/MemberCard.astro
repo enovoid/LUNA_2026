@@ -1,0 +1,119 @@
+---
+// 예전 루나 사이트(luna-landing)의 멤버 카드 구성을 그대로 따른다: 직군 → 둥근 사진 → 이름 → 학번·반 → 한마디.
+// 지금 디자인 시스템에 맞춰 테두리 대신 면 색(--surface-1)으로 한마디 말풍선을 구분한다.
+// 한마디 칸은 두 줄 높이를 미리 잡아 두어 내용 길이와 상관없이 카드 높이가 같다.
+import { memberAnchor } from '../lib/content';
+import type { Member } from '../lib/data';
+import Picture from './Picture.astro';
+
+interface Props {
+  member: Member;
+}
+const { member } = Astro.props;
+const meta = [member.schoolGeneration, member.className].filter(Boolean).join(' ');
+---
+
+<article class="member" id={memberAnchor(member)}>
+  <p class="member-position">{member.position}</p>
+  <Picture image={member.image} alt={`${member.name} 프로필 사진`} ratio="1 / 1" sizes="(min-width: 768px) 140px, 112px" class="member-photo">
+    <span class="member-initial" aria-hidden="true">{member.name.slice(0, 1)}</span>
+  </Picture>
+  <h3 class="member-name">{member.name}</h3>
+  <p class="member-meta">{meta}</p>
+  <p class="member-desc" title={member.description || undefined} aria-hidden={member.description ? undefined : 'true'}>
+    <span>{member.description}</span>
+  </p>
+</article>
+
+<style>
+  .member {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 260px;
+    margin-inline: auto;
+    text-align: center;
+    scroll-margin-top: 120px;
+  }
+  .member p,
+  .member h3 {
+    margin: 0;
+  }
+  .member-position {
+    min-height: 20px;
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 500;
+    color: var(--text-2, var(--color-label-2));
+  }
+  .member :global(.member-photo) {
+    width: 112px;
+    margin-top: 16px;
+    border-radius: 50%;
+    background: var(--surface-1, var(--color-card));
+  }
+  .member-initial {
+    font-size: 40px;
+    font-weight: 600;
+    color: var(--accent-text, var(--color-accent));
+  }
+  .member-name {
+    margin-top: 16px !important;
+    max-width: 100%;
+    font-size: 20px;
+    line-height: 25px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .member-meta {
+    min-height: 20px;
+    margin-top: 4px !important;
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--text-2, var(--color-label-2));
+  }
+  /* 말풍선은 두 줄 높이로 고정하고 글은 가운데에 둔다. 두 줄을 넘으면 말줄임(전체는 title로). */
+  .member-desc {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: calc(2 * 24px + 2 * 12px);
+    margin-top: 16px !important;
+    padding: 12px 16px;
+    border-radius: 20px;
+    background: var(--surface-1, var(--color-card));
+    font-size: 15px;
+    line-height: 24px;
+    color: var(--text-2, var(--color-label-2));
+  }
+  /* 한마디가 없어도 자리는 남겨 줄의 카드 높이를 맞춘다. */
+  .member-desc:has(span:empty) {
+    visibility: hidden;
+  }
+  .member-desc span {
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  /* 수상 페이지의 멤버 링크로 들어오면 그 카드의 말풍선만 강조색으로 살짝 물든다. */
+  .member:target .member-desc {
+    background: var(--accent-soft, var(--color-lavender-tint));
+    color: var(--text, var(--color-label));
+  }
+  @media (min-width: 768px) {
+    .member :global(.member-photo) {
+      width: 140px;
+      margin-top: 20px;
+    }
+    .member-name {
+      margin-top: 20px !important;
+      font-size: 24px;
+      line-height: 30px;
+    }
+  }
+</style>

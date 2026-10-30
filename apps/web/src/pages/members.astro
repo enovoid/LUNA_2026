@@ -1,6 +1,7 @@
 ---
+// 예전 루나 사이트(luna-landing)처럼 기수 탭으로 한 기수씩 보여 준다. 탭은 알약 대신 글자만으로, 선택된 기수는 밝은 글자와 큰 제목으로 드러난다.
 import EmptyState from '../components/EmptyState.astro';
-import MemberRow from '../components/MemberRow.astro';
+import MemberCard from '../components/MemberCard.astro';
 import PageHead from '../components/PageHead.astro';
 import Base from '../layouts/Base.astro';
 import { generationNumber, groupMembersByGeneration } from '../lib/content';
@@ -9,137 +10,167 @@ import { loadSiteData } from '../lib/data';
 const { members } = await loadSiteData();
 const groups = groupMembersByGeneration(members).map((g) => {
   const n = generationNumber(g.generation);
-  // "LUNA 8기" → 큰 숫자 "08". 숫자가 없는 묶음(기수 미정)은 이름을 그대로 쓴다.
-  return { ...g, numeral: n >= 0 ? String(n).padStart(2, '0') : null };
+  return { ...g, key: n >= 0 ? String(n) : g.generation };
 });
 ---
 
 <Base title="멤버" description="루나를 만들어 가는 사람들을 기수별로 소개합니다." current="members">
-  <PageHead title="멤버" lead="루나를 만들어 가는 사람들입니다." />
+  <PageHead title="멤버" lead="루나의 목표를 향해 함께 달려가고 있는 멤버들입니다." />
 
   <div class="container-page page-body">
     {
       members.length === 0 ? (
         <EmptyState title="아직 소개할 멤버가 없어요" message="멤버가 등록되면 기수별로 보여요." />
       ) : (
-        groups.map((g, i) => (
-          <section class="gen" aria-labelledby={`gen-${i}`}>
-            <div class="gen-head">
-              <h2 id={`gen-${i}`}>
-                {g.numeral ? (
-                  <>
-                    <span class="gen-num" aria-hidden="true">{g.numeral}</span>
-                    <span class="sr-only">{g.generation}</span>
-                    <span class="gen-label" aria-hidden="true">{g.generation}</span>
-                  </>
-                ) : (
-                  <span class="gen-label gen-label-only">{g.generation}</span>
-                )}
+        <>
+          <div class="gen-tabs" role="tablist" aria-label="기수">
+            {groups.map((g, i) => (
+              <button
+                type="button"
+                role="tab"
+                id={`gen-tab-${g.key}`}
+                aria-controls={`gen-panel-${g.key}`}
+                aria-selected={i === 0 ? 'true' : 'false'}
+                tabindex={i === 0 ? 0 : -1}
+                data-gen-tab={g.key}
+              >
+                {g.generation}
+              </button>
+            ))}
+          </div>
+          {groups.map((g, i) => (
+            <section
+              class="gen"
+              role="tabpanel"
+              id={`gen-panel-${g.key}`}
+              aria-labelledby={`gen-tab-${g.key}`}
+              data-gen-panel={g.key}
+              hidden={i !== 0}
+            >
+              <h2>
+                {g.generation} <span>{g.members.length}명</span>
               </h2>
-              <p class="gen-count">{g.members.length}명</p>
-            </div>
-            <ol class="roll">
-              {g.members.map((m) => (
-                <li>
-                  <MemberRow member={m} />
-                </li>
-              ))}
-            </ol>
-          </section>
-        ))
+              <ul class="member-grid">
+                {g.members.map((m) => (
+                  <li>
+                    <MemberCard member={m} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </>
       )
     }
   </div>
+  {/* 첫 페인트 전에 ?gen= 또는 #member-… 에 맞는 기수를 열어 둔다(레이아웃이 흔들리지 않게). 규칙은 scripts/member-gen.ts와 같다. */}
+  <script is:inline>
+    (() => {
+      const hash = decodeURIComponent(location.hash.slice(1));
+      const card = hash && document.getElementById(hash);
+      const panel = card && card.closest("[data-gen-panel]");
+      const key = panel ? panel.dataset.genPanel : new URLSearchParams(location.search).get("gen");
+      if (!key || !document.querySelector(`[data-gen-panel="${CSS.escape(key)}"]`)) return;
+      for (const p of document.querySelectorAll("[data-gen-panel]")) p.hidden = p.dataset.genPanel !== key;
+      for (const t of document.querySelectorAll("[data-gen-tab]")) {
+        const on = t.dataset.genTab === key;
+        t.setAttribute("aria-selected", String(on));
+        t.tabIndex = on ? 0 : -1;
+      }
+    })();
+  </script>
 </Base>
 
 <script>
-  import '../scripts/member-row';
+  import '../scripts/member-gen';
 </script>
 
 <style>
   .page-body {
     display: flex;
     flex-direction: column;
-    gap: 72px;
-    padding-top: 40px;
+    gap: 32px;
+    padding-top: 32px;
     padding-bottom: 120px;
+  }
+  /* 기수 탭: 테두리·알약 없이 글자만. 선택된 탭은 밝은 글자, 나머지는 흐린 글자. 넘치면 가로로 스크롤. */
+  .gen-tabs {
+    display: flex;
+    gap: 4px 24px;
+    margin-inline: calc(-1 * var(--margin));
+    padding-inline: var(--margin);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .gen-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .gen-tabs button {
+    flex: none;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-2, var(--color-label-2));
+    font: inherit;
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--fade-dur) ease;
+  }
+  .gen-tabs button[aria-selected="true"] {
+    color: var(--text, var(--color-label));
+  }
+  @media (hover: hover) {
+    .gen-tabs button:hover {
+      color: var(--text, var(--color-label));
+    }
+  }
+  .gen-tabs button:focus-visible {
+    outline: 2px solid var(--accent, var(--color-accent));
+    outline-offset: 2px;
+    border-radius: 4px;
   }
   .gen {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 40px;
   }
-  .gen-head {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
+  .gen[hidden] {
+    display: none;
   }
-  .gen-head h2 {
-    display: flex;
-    flex-direction: column;
+  .gen h2 {
     margin: 0;
+    font-size: clamp(34px, 6vw, 48px);
+    line-height: 1.17;
+    font-weight: 700;
   }
-  /* 기수 숫자가 이 페이지의 주인공. 크게, 촘촘하게, 숫자 폭 고정. */
-  .gen-num {
-    font-size: clamp(88px, 22vw, 168px);
-    line-height: 0.86;
-    font-weight: 600;
-    letter-spacing: -0.05em;
-    font-variant-numeric: tabular-nums;
-    color: var(--text, var(--color-label));
-  }
-  .gen-label {
-    margin-top: 10px;
-    font-size: 13px;
-    line-height: 18px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent, var(--color-accent));
-  }
-  .gen-label-only {
-    margin-top: 0;
-    font-size: 28px;
-    line-height: 34px;
-    letter-spacing: 0;
-    text-transform: none;
-    color: var(--text, var(--color-label));
-  }
-  .gen-count {
-    margin: 0;
-    font-size: 15px;
-    line-height: 20px;
+  .gen h2 span {
+    font-size: 17px;
+    font-weight: 500;
     color: var(--text-2, var(--color-label-2));
-    font-variant-numeric: tabular-nums;
   }
-  .roll {
+  .member-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 56px 16px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
-
-  /* 넓은 화면: 왼쪽에 기수 숫자를 붙여 두고(스크롤해도 머무름) 오른쪽에 명단을 흘린다. */
-  @media (min-width: 900px) {
+  @media (min-width: 768px) {
     .page-body {
-      gap: 120px;
-      padding-top: 64px;
+      padding-top: 48px;
     }
-    .gen {
-      display: grid;
-      grid-template-columns: minmax(220px, 3fr) 9fr;
-      column-gap: 48px;
-      align-items: start;
+    .gen-tabs {
+      margin-inline: 0;
+      padding-inline: 0;
     }
-    .gen-head {
-      position: sticky;
-      top: 96px;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-    }
-    .roll {
-      padding-top: 4px;
+    .member-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 80px 48px;
     }
   }
 </style>
