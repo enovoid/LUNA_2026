@@ -25,6 +25,7 @@ const { label, param, options, unit } = Astro.props;
     display: none;
   }
   .segmented {
+    position: relative;
     display: inline-flex;
     gap: 4px;
     padding: 2px;
@@ -45,16 +46,45 @@ const { label, param, options, unit } = Astro.props;
     line-height: 18px;
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.15s, box-shadow 0.15s;
+    transition: background-color var(--fade-dur) ease;
+  }
+  .segment-thumb {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    border-radius: 1000px;
+    background: var(--misc-segmented-control-selected-fill);
+    box-shadow: var(--shadow-segment-selected);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .segment {
+    position: relative;
+  }
+  .has-thumb .segment-thumb {
+    opacity: 1;
+    transition:
+      transform var(--spring-snappy-dur) var(--spring-snappy),
+      width var(--spring-snappy-dur) var(--spring-snappy);
+  }
+  .has-thumb .segment[aria-checked='true'] {
+    background: transparent;
+    box-shadow: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .has-thumb .segment-thumb {
+      transition: none;
+    }
   }
   .segment[aria-checked='true'] {
     background: var(--misc-segmented-control-selected-fill);
-    box-shadow: var(--shadow-segment-selected), 0 0 0 0.5px #0000000a;
+    box-shadow: var(--shadow-segment-selected);
     font-weight: 600;
-    color: var(--color-brand-violet);
+    color: var(--color-label);
   }
   .segment:focus-visible {
-    outline: 2px solid var(--color-brand-violet);
+    outline: 2px solid var(--color-accent);
     outline-offset: -2px;
   }
 </style>

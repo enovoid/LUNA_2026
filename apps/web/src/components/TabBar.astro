@@ -53,6 +53,7 @@ const tabs = [
     justify-content: center;
     padding-inline: 16px;
     pointer-events: none;
+    view-transition-name: tab-bar;
   }
   ul {
     display: flex;
@@ -76,18 +77,27 @@ const tabs = [
     justify-content: center;
     gap: 1px;
     border-radius: 1000px;
-    color: #1c1c1e;
+    color: var(--color-label);
     font-size: 10px;
     line-height: 12px;
     font-weight: 600;
     text-decoration: none;
   }
+  a {
+    transition:
+      background-color var(--fade-dur) ease,
+      transform var(--spring-snappy-dur) var(--spring-snappy);
+  }
   a[aria-current="page"] {
-    color: var(--color-brand-violet);
+    color: var(--color-accent);
     background: var(--color-lavender-tint);
   }
-  a:active {
-    opacity: 0.6;
+  @media (prefers-reduced-motion: no-preference) {
+    a:active {
+      transform: scale(0.94);
+      transition-duration: var(--press-dur);
+      transition-timing-function: ease-out;
+    }
   }
   @media (min-width: 768px) {
     .tab-bar {

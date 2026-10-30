@@ -14,6 +14,11 @@
 //   0.78–0.88  "IT SOCIAL VENTURE · SINCE …" + "세상을 비추는 달, LUNA"
 //   0.94–1.00  묶음이 살짝 위로 빠지고 상단 내비 로고가 나타난다 → 소개 문단으로 이어짐
 
+import { springEase } from '../lib/motion';
+
+/** luna.svg 바깥 원의 중심이 상자 중심에서 오른쪽으로 떨어진 정도(로고 폭 대비). (388.64 - 369) / 738 */
+const LOGO_CIRCLE_DX = (388.64 - 369) / 738;
+
 interface SceneConfig {
   mx: number;
   my: number;
@@ -111,7 +116,8 @@ async function start(root: HTMLElement) {
     const box = logoBox.getBoundingClientRect();
     m.logoPx = box.width || 1;
     // 로고 상자 중심 → 화면 중심까지의 거리. 달이 있던 자리에서 로고가 시작한다.
-    m.dx = st.left + st.width / 2 - (box.left + box.width / 2);
+    // 로고의 바깥 원은 상자 중심보다 살짝 오른쪽에 있어(luna.svg: 중심 388.6/738) 그만큼 왼쪽으로 당긴다.
+    m.dx = st.left + st.width / 2 - (box.left + box.width / 2) - LOGO_CIRCLE_DX * m.moonPx;
     m.dy = st.top + st.height / 2 - (box.top + box.height / 2);
     stage.style.setProperty('--hole', `${(m.moonPx / 2).toFixed(1)}px`);
   };
@@ -152,9 +158,10 @@ async function start(root: HTMLElement) {
     if (navLogo) navLogo.style.opacity = s.nav.toFixed(3);
   };
 
+  // 스크롤에 직접 묶인 움직임은 손가락(휠)을 그대로 따라가야 하므로 대칭 감속만 쓴다(HIG: 제스처를 따르는 움직임).
   const smooth = (t: number) => t * t * (3 - 2 * t);
-  // "딱" 하고 자리 잡는 느낌: 살짝 넘쳤다가 돌아오는 감속
-  const snap = gsap.parseEase('back.out(1.6)');
+  // "딱" 하고 자리 잡는 순간만 HIG bouncy 스프링(살짝 넘쳤다 돌아옴, 약 4%).
+  const snap = springEase(0.5, 0.25);
 
   const tl = gsap.timeline({
     defaults: { ease: 'none' },
@@ -163,7 +170,9 @@ async function start(root: HTMLElement) {
       trigger: root,
       start: 'top top',
       end: 'bottom bottom',
-      scrub: 0.4,
+      // 휠은 한 칸(약 100px)씩 끊겨 들어오므로 0.5초 동안 따라잡게 해 부드럽게 잇고,
+      // 터치·트랙패드는 이미 관성이 부드러우므로 지연을 줄여 손가락을 바로 따라오게 한다.
+      scrub: window.matchMedia('(pointer: coarse)').matches ? 0.2 : 0.5,
       invalidateOnRefresh: true,
       onRefresh: () => {
         measure();
@@ -203,6 +212,18 @@ async function start(root: HTMLElement) {
 
   measure();
   render();
+
+  // 웹폰트(Pretendard)가 늦게 오면 "LUNA" 글자 폭과 제목 높이가 바뀌어 로고 상자 위치도 바뀐다.
+  // 처음 잰 값으로 두면 달과 로고가 어긋나므로, 묶음 크기가 바뀔 때마다 다시 잰다.
+  const remeasure = new ResizeObserver(() => {
+    measure();
+    render();
+  });
+  for (const el of root.querySelectorAll('.lockup, .intro-title')) remeasure.observe(el);
+  document.fonts?.ready.then(() => {
+    measure();
+    render();
+  });
 
   // 데스크톱↔모바일 에셋이 바뀌면 좌표도 바뀐다.
   mobileQuery.addEventListener('change', () => {
