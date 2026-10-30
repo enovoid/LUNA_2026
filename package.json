@@ -18,6 +18,7 @@
     "test": "pnpm -r --if-present test",
     "build": "pnpm --filter ./apps/web build",
     "dev": "pnpm --filter ./apps/web dev",
+    "start": "pnpm --filter @luna/admin start",
     "db:generate": "pnpm --filter @luna/db generate",
     "db:migrate": "pnpm --filter @luna/db migrate",
     "sync": "pnpm --filter @luna/sync sync"
