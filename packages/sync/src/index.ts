@@ -8,6 +8,9 @@ import { R2Store } from './r2.js';
 import { type ContentStore, emptyStore, readOnly } from './store.js';
 import { runSync, verifySchemas } from './sync.js';
 
+/** 이 시간이 지난 `_running` 잠금은 죽은 실행이 남긴 것으로 보고 가져간다. */
+const RUN_LOCK_TTL_MS = 30 * 60_000;
+
 /**
  * 종료 코드
  * 0: 성공
@@ -17,6 +20,7 @@ import { runSync, verifySchemas } from './sync.js';
 async function main(): Promise<number> {
   const logger = createConsoleLogger();
   let store: ContentStore | undefined;
+  let lock: { db: PostgresStore; lockedAt: Date } | undefined;
   try {
     const options = parseArgs(process.argv.slice(2));
     const config = loadConfig(process.env, options);
@@ -31,6 +35,18 @@ async function main(): Promise<number> {
     if (config.databaseUrl) {
       const db = new PostgresStore(config.databaseUrl);
       store = options.dryRun ? readOnly(db) : db;
+      if (!options.dryRun) {
+        // SYNC_TRIGGER: 누가 시작했는지(기본 cron, 관리자 페이지의 수동 실행은 admin). 관리자 페이지에 보인다.
+        const lockedAt = await db.acquireRunLock(
+          process.env.SYNC_TRIGGER?.trim() || 'cron',
+          RUN_LOCK_TTL_MS,
+        );
+        if (!lockedAt) {
+          logger.warn('다른 동기화가 실행 중이라 이번 실행은 건너뜁니다');
+          return 0;
+        }
+        lock = { db, lockedAt };
+      }
     } else {
       logger.warn('DATABASE_URL이 없어 모든 페이지를 새 항목으로 보고 확인합니다(--dry-run)');
       store = emptyStore();
@@ -78,6 +94,7 @@ async function main(): Promise<number> {
     }
     return 2;
   } finally {
+    if (lock) await lock.db.releaseRunLock(lock.lockedAt).catch(() => {});
     await store?.close().catch(() => {});
   }
 }

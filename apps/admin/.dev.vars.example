@@ -1,0 +1,6 @@
+# 로컬 `pnpm --filter @luna/admin dev`용. .dev.vars로 복사해 채운다(커밋하지 않음).
+# localhost에서만 Access 없이 이 이메일로 들어온 것으로 본다.
+DEV_ACCESS_EMAIL=you@example.com
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/luna
+# 없으면 GitHub 구역만 오류로 보이고 나머지는 동작한다.
+GITHUB_TOKEN=

@@ -68,6 +68,18 @@ export const syncState = pgTable('sync_state', {
   lastError: text('last_error'),
 });
 
+/**
+ * Notion에서 관리하지 않는 사이트 설정(모집 정보, 연락처). 관리자 페이지가 쓰고 사이트 빌드가 읽는다.
+ * value 모양은 `settings.ts`의 SettingsByKey. 행이 없으면 사이트는 `apps/web/src/content/site.ts`의 기본값을 쓴다.
+ */
+export const siteSettings = pgTable('site_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  /** 마지막으로 고친 운영진(Cloudflare Access 이메일) */
+  updatedBy: text('updated_by'),
+});
+
 export type Member = typeof members.$inferSelect;
 export type NewMember = typeof members.$inferInsert;
 export type Award = typeof awards.$inferSelect;
@@ -77,3 +89,4 @@ export type NewProject = typeof projects.$inferInsert;
 export type Faq = typeof faqs.$inferSelect;
 export type NewFaq = typeof faqs.$inferInsert;
 export type SyncState = typeof syncState.$inferSelect;
+export type SiteSetting = typeof siteSettings.$inferSelect;

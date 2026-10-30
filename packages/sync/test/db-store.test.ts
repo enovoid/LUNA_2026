@@ -78,4 +78,21 @@ describe.skipIf(!url)('PostgresStore (실제 DB)', () => {
       });
     }
   });
+
+  it('실행 잠금: 잡혀 있으면 못 잡고, 풀거나 ttl이 지나면 잡는다', async () => {
+    const s = store!;
+    const first = await s.acquireRunLock('test', 60_000);
+    expect(first).toBeInstanceOf(Date);
+    expect(await s.acquireRunLock('test', 60_000)).toBeUndefined();
+    await s.releaseRunLock(first!);
+    const second = await s.acquireRunLock('test', 60_000);
+    expect(second).toBeInstanceOf(Date);
+    // ttl 0이면 남아 있는 잠금을 죽은 것으로 보고 가져간다. 앞선 잠금 해제는 새 잠금을 지우지 않는다.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const third = await s.acquireRunLock('test', 0);
+    expect(third).toBeInstanceOf(Date);
+    await s.releaseRunLock(second!);
+    expect(await s.acquireRunLock('test', 60_000)).toBeUndefined();
+    await s.releaseRunLock(third!);
+  });
 });

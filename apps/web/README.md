@@ -23,7 +23,8 @@ pnpm --filter @luna/web build && pnpm --filter @luna/web preview
 
 ```
 src/
-  content/site.ts        Notion에 없는 값: 창립 연도, 모집 정보, 연락처, 인트로 좌표·배율
+  content/site.ts        Notion에 없는 고정 값: 창립 연도, 인트로 좌표·배율
+                         (모집 정보·연락처는 관리자 페이지 → DB site_settings → loadSiteData().settings)
   lib/data/              데이터 진입점(db.ts / mock.ts), 행 검증
   lib/content.ts         정렬·묶음·통계·이름 연결
   lib/image.ts           R2 srcset(480/960/1600)
@@ -129,7 +130,7 @@ public/intro/            인트로 사진 4장 + 달 고해상도 2장
 ## 남은 TODO
 
 - 창립 연도 확인(`site.ts` `foundedYear`, 지금 2018)
-- 모집 기수·기간·지원 링크, 연락처·SNS
+- 모집 기수·기간·지원 링크, 연락처·SNS: 관리자 페이지(`apps/admin`)에서 입력
 - 도메인(`SITE_URL`), Cloudflare 배포 방식 확정
 - 다크 모드
 - 멤버·프로젝트·수상 페이지 JS를 50KB 아래로 줄일지 결정(React → Preact 호환층 등)
