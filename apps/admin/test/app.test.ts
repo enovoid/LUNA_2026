@@ -1,15 +1,51 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { generateKeyPair, SignJWT } from 'jose';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AppDeps, handle } from '../src/app.js';
-import { createAuth, SESSION_COOKIE } from '../src/auth.js';
+import { type AuthOptions, createAuth, LOGIN_COOKIE, SESSION_COOKIE } from '../src/auth.js';
 import type { Jobs } from '../src/jobs.js';
 import type { Site } from '../src/site.js';
-import type { AdminStore, StoredSettings } from '../src/store.js';
+import type { AdminStore, StoredAdmins, StoredSettings } from '../src/store.js';
 
 const ORIGIN = 'https://admin.example';
-const PASSWORD = 'correct horse battery';
+const CLIENT_ID = 'client-123.apps.googleusercontent.com';
+const OWNER = 'owner@luna.kr';
+
+/** 가짜 Google: id_token을 이 키로 서명하고, 앱은 공개 키로 확인한다. */
+let google: Awaited<ReturnType<typeof generateKeyPair>>;
+/** 다음 토큰 교환에서 Google이 돌려줄 사용자 정보 */
+let googleUser: Record<string, unknown> = {};
+let tokenStatus = 200;
+
+beforeAll(async () => {
+  google = await generateKeyPair('RS256');
+});
+
+const fakeFetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+  const body = new URLSearchParams(String(init?.body ?? ''));
+  const idToken = await new SignJWT({ ...googleUser })
+    .setProtectedHeader({ alg: 'RS256' })
+    .setIssuer('https://accounts.google.com')
+    .setAudience(CLIENT_ID)
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(google.privateKey);
+  if (body.get('code') !== 'good-code') return Response.json({}, { status: 400 });
+  return Response.json({ id_token: idToken }, { status: tokenStatus });
+});
+
+function authFor(overrides: Partial<AuthOptions> = {}) {
+  return createAuth({
+    clientId: CLIENT_ID,
+    clientSecret: 'secret',
+    fetch: fakeFetch as typeof fetch,
+    googleKeys: async () => google.publicKey,
+    ...overrides,
+  });
+}
 
 function setup(overrides: Partial<AppDeps> = {}) {
   const saved: StoredSettings = {};
+  let admins: StoredAdmins = { emails: ['staff@gmail.com'], updatedAt: null, updatedBy: null };
   const store: AdminStore = {
     syncStates: vi.fn(async () => [
       {
@@ -25,6 +61,10 @@ function setup(overrides: Partial<AppDeps> = {}) {
       (saved as Record<string, unknown>)[key] = { value, updatedAt: new Date(), updatedBy: editor };
     }),
     generations: vi.fn(async () => [6, 7, 8]),
+    adminEmails: vi.fn(async () => admins),
+    saveAdminEmails: vi.fn(async (emails, editor) => {
+      admins = { emails, updatedAt: new Date(), updatedBy: editor };
+    }),
   };
   const jobs: Jobs = {
     sync: vi.fn(),
@@ -39,10 +79,11 @@ function setup(overrides: Partial<AppDeps> = {}) {
     serve: vi.fn(async () => new Response('site')),
   };
   const deps: AppDeps = {
-    auth: createAuth(PASSWORD),
+    auth: authFor(),
     store: () => store,
     site,
     jobs,
+    ownerEmails: [OWNER],
     now: () => new Date('2026-10-30T10:10:00Z'),
     ...overrides,
   };
@@ -70,16 +111,44 @@ const post = (
   });
 };
 
-async function loginAs(deps: AppDeps, name = '김운영') {
+const cookieValue = (response: Response, name: string) =>
+  response.headers
+    .getSetCookie()
+    .find((c) => c.startsWith(`${name}=`))
+    ?.split(';')[0];
+
+/** Google 로그인을 처음부터 끝까지 흉내 낸다. 성공하면 세션 쿠키를, 실패하면 응답을 돌려준다. */
+async function googleLogin(
+  deps: AppDeps,
+  user: Record<string, unknown>,
+  tweak: { state?: string; code?: string; dropCookie?: boolean } = {},
+) {
+  const start = await handle(get('/admin/login/google', null), deps);
+  const location = new URL(start.headers.get('location') ?? '');
+  const loginCookie = cookieValue(start, LOGIN_COOKIE) ?? '';
+  googleUser = { nonce: location.searchParams.get('nonce'), ...user };
+  const params = new URLSearchParams({
+    code: tweak.code ?? 'good-code',
+    state: tweak.state ?? location.searchParams.get('state') ?? '',
+  });
   const response = await handle(
-    post('/admin/login', { name, password: PASSWORD }, ORIGIN, null),
+    get(`/admin/auth/callback?${params}`, tweak.dropCookie ? null : loginCookie),
     deps,
   );
-  const cookie = response.headers.get('set-cookie') ?? '';
-  return cookie.split(';')[0] ?? '';
+  return { start, location, response, session: cookieValue(response, SESSION_COOKIE) ?? '' };
 }
 
-describe('로그인', () => {
+const STAFF = { email: 'Staff@gmail.com', email_verified: true, name: '김운영' };
+
+async function loginAs(deps: AppDeps) {
+  return (await googleLogin(deps, STAFF)).session;
+}
+
+describe('Google 로그인', () => {
+  beforeEach(() => {
+    tokenStatus = 200;
+  });
+
   it('로그인하지 않으면 화면은 로그인으로 보내고, 쓰기는 403', async () => {
     const { deps, store, jobs } = setup();
     const page = await handle(get('/admin/', null), deps);
@@ -89,87 +158,91 @@ describe('로그인', () => {
     expect(write.status).toBe(403);
     expect(store.syncStates).not.toHaveBeenCalled();
     expect(jobs.sync).not.toHaveBeenCalled();
+    const login = await (await handle(get('/admin/login', null), deps)).text();
+    expect(login).toContain('href="/admin/login/google"');
   });
 
-  it('비밀번호가 맞으면 세션 쿠키를 주고 관리자 화면으로 보낸다', async () => {
+  it('Google로 보낼 때 state·nonce를 붙이고 돌아올 주소를 알린다', async () => {
     const { deps } = setup();
-    const response = await handle(
-      post('/admin/login', { name: ' 김운영 ', password: PASSWORD }, ORIGIN, null),
-      deps,
+    const { start, location } = await googleLogin(deps, STAFF);
+    expect(start.status).toBe(303);
+    expect(location.origin + location.pathname).toBe(
+      'https://accounts.google.com/o/oauth2/v2/auth',
     );
+    expect(location.searchParams.get('client_id')).toBe(CLIENT_ID);
+    expect(location.searchParams.get('redirect_uri')).toBe(`${ORIGIN}/admin/auth/callback`);
+    expect(location.searchParams.get('scope')).toBe('openid email profile');
+    expect(location.searchParams.get('state')).toMatch(/^[\w-]{20,}$/);
+    expect(start.headers.get('set-cookie')).toContain('HttpOnly; Secure; SameSite=Lax');
+  });
+
+  it('허용 목록의 계정이면 세션 쿠키를 주고 관리자 화면으로 보낸다', async () => {
+    const { deps } = setup();
+    const { response, session: cookie } = await googleLogin(deps, STAFF);
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe('/admin/');
-    const cookie = response.headers.get('set-cookie') ?? '';
-    expect(cookie).toContain(`${SESSION_COOKIE}=`);
-    expect(cookie).toContain('HttpOnly');
-    expect(cookie).toContain('Secure');
-    const body = await (await handle(get('/admin/', cookie.split(';')[0] ?? ''), deps)).text();
+    expect(cookie).toMatch(new RegExp(`^${SESSION_COOKIE}=.+`));
+    expect(cookieValue(response, LOGIN_COOKIE)).toBe(`${LOGIN_COOKIE}=`);
+    const body = await (await handle(get('/admin/', cookie), deps)).text();
     expect(body).toContain('김운영');
   });
 
-  it('비밀번호가 틀리면 401, 다섯 번 틀리면 맞는 비밀번호도 잠시 막는다', async () => {
+  it('Railway 변수(ADMIN_EMAILS)의 운영진은 DB 없이도 들어온다', async () => {
+    const { deps } = setup({
+      store: () => {
+        throw new Error('DATABASE_URL이 설정되지 않았습니다.');
+      },
+    });
+    const { session: cookie } = await googleLogin(deps, { email: OWNER, email_verified: true });
+    expect(cookie).not.toBe('');
+  });
+
+  it('목록에 없거나 이메일 확인이 안 된 계정은 막는다', async () => {
     const { deps } = setup();
-    for (let i = 0; i < 5; i++) {
-      const wrong = await handle(
-        post('/admin/login', { name: 'x', password: 'wrong' }, ORIGIN, null),
-        deps,
-        '1.2.3.4',
-      );
-      expect(wrong.status).toBe(401);
-    }
-    const blocked = await handle(
-      post('/admin/login', { name: 'x', password: PASSWORD }, ORIGIN, null),
-      deps,
-      '1.2.3.4',
-    );
-    expect(await blocked.text()).toContain('10분 뒤');
-    // 다른 주소는 막히지 않는다.
-    const other = await handle(
-      post('/admin/login', { name: 'x', password: PASSWORD }, ORIGIN, null),
-      deps,
-      '5.6.7.8',
-    );
-    expect(other.status).toBe(303);
+    const stranger = await googleLogin(deps, { email: 'x@gmail.com', email_verified: true });
+    expect(stranger.response.status).toBe(403);
+    expect(await stranger.response.text()).toContain('운영진 목록에 없어요');
+    expect(stranger.session).toBe('');
+    const unverified = await googleLogin(deps, { ...STAFF, email_verified: false });
+    expect(unverified.response.status).toBe(403);
   });
 
-  it('이름이 비면 로그인하지 않는다', async () => {
+  it('state가 다르거나 로그인 쿠키가 없거나 nonce가 다르면 막는다', async () => {
     const { deps } = setup();
-    const response = await handle(
-      post('/admin/login', { name: '  ', password: PASSWORD }, ORIGIN, null),
-      deps,
-    );
-    expect(response.status).toBe(401);
+    expect((await googleLogin(deps, STAFF, { state: 'forged' })).response.status).toBe(403);
+    expect((await googleLogin(deps, STAFF, { dropCookie: true })).response.status).toBe(403);
+    expect((await googleLogin(deps, { ...STAFF, nonce: 'other' })).response.status).toBe(403);
+    expect((await googleLogin(deps, STAFF, { code: 'bad' })).response.status).toBe(403);
   });
 
-  it('비밀번호 설정이 짧거나 없으면 아무도 못 들어온다', async () => {
-    for (const password of [undefined, 'short']) {
-      const { deps } = setup({ auth: createAuth(password) });
-      const response = await handle(
-        post('/admin/login', { name: 'x', password: password ?? '' }, ORIGIN, null),
-        deps,
-      );
-      expect(response.status).toBe(401);
-      expect(await response.text()).toContain('ADMIN_PASSWORD');
-    }
+  it('다른 키로 서명한 id_token은 받지 않는다', async () => {
+    const other = await generateKeyPair('RS256');
+    const { deps } = setup({ auth: authFor({ googleKeys: async () => other.publicKey }) });
+    expect((await googleLogin(deps, STAFF)).response.status).toBe(403);
   });
 
-  it('위조하거나 비밀번호가 바뀐 세션은 받지 않는다', async () => {
+  it('Google 설정이 없으면 로그인 버튼 대신 안내를 보여 준다', async () => {
+    const { deps } = setup({ auth: authFor({ clientSecret: undefined }) });
+    const body = await (await handle(get('/admin/login', null), deps)).text();
+    expect(body).toContain('GOOGLE_CLIENT_ID');
+    expect((await handle(get('/admin/login/google', null), deps)).status).toBe(503);
+  });
+
+  it('위조하거나 비밀이 바뀐 세션은 받지 않는다', async () => {
     const { deps } = setup();
     const cookie = await loginAs(deps);
-    const changed = setup({ auth: createAuth('another long password') }).deps;
+    const changed = setup({ auth: authFor({ clientSecret: 'rotated' }) }).deps;
     expect((await handle(get('/admin/', cookie), changed)).status).toBe(303);
-    expect(
-      (await handle(get('/admin/', `${SESSION_COOKIE}=forged.token.value`), deps)).status,
-    ).toBe(303);
+    const forged = `${SESSION_COOKIE}=${cookie.split('=')[1]?.slice(0, -2)}xx`;
+    expect((await handle(get('/admin/', forged), deps)).status).toBe(303);
   });
 
   it('세션은 12시간 뒤 끝난다', async () => {
-    let now = Date.parse('2026-10-30T10:00:00Z');
-    const auth = createAuth(PASSWORD, { now: () => now });
-    const { deps } = setup({ auth });
+    let clock = Date.parse('2026-10-30T00:00:00Z');
+    const { deps } = setup({ auth: authFor({ now: () => clock }) });
     const cookie = await loginAs(deps);
     expect((await handle(get('/admin/', cookie), deps)).status).toBe(200);
-    now += 12 * 3600_000 + 1000;
+    clock += 12 * 3600_000 + 1000;
     expect((await handle(get('/admin/', cookie), deps)).status).toBe(303);
   });
 
@@ -180,14 +253,55 @@ describe('로그인', () => {
     expect(response.headers.get('location')).toBe('/admin/login');
     expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
   });
+});
 
-  it('다른 사이트에서 보낸 로그인 폼은 막는다', async () => {
+describe('운영진 목록', () => {
+  beforeEach(async () => {
+    session = await loginAs(setup().deps);
+  });
+
+  it('추가·삭제하고, 누가 바꿨는지 이메일로 남긴다', async () => {
+    const { deps, store } = setup();
+    const added = await handle(post('/admin/admins/add', { email: ' New@Gmail.com ' }), deps);
+    expect(added.headers.get('location')).toBe('/admin/?notice=admin-added');
+    expect(store.saveAdminEmails).toHaveBeenLastCalledWith(
+      ['new@gmail.com', 'staff@gmail.com'],
+      'staff@gmail.com',
+    );
+    const { session: newcomer } = await googleLogin(deps, {
+      email: 'new@gmail.com',
+      email_verified: true,
+    });
+    expect(newcomer).not.toBe('');
+
+    await handle(post('/admin/admins/remove', { email: 'new@gmail.com' }), deps);
+    expect(store.saveAdminEmails).toHaveBeenLastCalledWith(['staff@gmail.com'], 'staff@gmail.com');
+  });
+
+  it('잘못된 이메일은 추가하지 않는다', async () => {
+    const { deps, store } = setup();
+    const response = await handle(post('/admin/admins/add', { email: 'nope' }), deps);
+    expect(response.headers.get('location')).toBe('/admin/?notice=admin-invalid');
+    expect(store.saveAdminEmails).not.toHaveBeenCalled();
+  });
+
+  it('Railway 변수의 운영진은 목록에 보이지만 빼기 버튼이 없다', async () => {
     const { deps } = setup();
+    const body = await (await handle(get('/admin/'), deps)).text();
+    expect(body).toContain(OWNER);
+    expect(body).toContain('Railway 변수 ADMIN_EMAILS');
+    expect(body).toContain('value="staff@gmail.com"');
+    expect(body).not.toContain(`value="${OWNER}"`);
+  });
+
+  it('다른 사이트에서 보낸 추가 요청은 막는다', async () => {
+    const { deps, store } = setup();
     const response = await handle(
-      post('/admin/login', { name: 'x', password: PASSWORD }, 'https://evil.example', null),
+      post('/admin/admins/add', { email: 'evil@x.com' }, 'https://evil.example'),
       deps,
     );
     expect(response.status).toBe(403);
+    expect(store.saveAdminEmails).not.toHaveBeenCalled();
   });
 });
 
@@ -310,7 +424,7 @@ describe('handle', () => {
         target: '',
         applyUrl: 'https://forms.gle/abc',
       },
-      '김운영',
+      'staff@gmail.com',
     );
     expect(jobs.build).toHaveBeenCalledWith('김운영 · 모집 정보 저장');
   });

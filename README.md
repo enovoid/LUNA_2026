@@ -7,7 +7,7 @@ Railway 서비스 하나(apps/admin)
   ├ 15분마다 Notion 동기화(변경분만) ─→ Railway Postgres (글, WebP 사진)
   ├ 바뀐 게 있으면 Astro 빌드(Postgres 읽기) ─→ 새 정적 파일로 교체
   ├ /        공개 사이트: 미리 만든 파일만 내보냄(압축·캐시)
-  └ /admin/  관리자 페이지(비밀번호 로그인): 동기화 상태, 모집·연락처 설정
+  └ /admin/  관리자 페이지(Google 로그인): 동기화 상태, 모집·연락처 설정
 ```
 
 방문자 요청은 Notion에도 DB에도 닿지 않는다. Notion은 동기화만 읽고, 사이트는 DB에 저장된 내용으로 미리 만든다. 모집 정보·연락처처럼 Notion에 없는 값은 관리자 페이지에서 고치고, 저장하면 사이트가 다시 만들어진다.
@@ -86,7 +86,7 @@ CI는 `pnpm/setup`으로 pnpm·Node를 `package.json`에서 읽어 설치한다(
 
 ### Railway
 
-- [ ] [`apps/admin/README.md`](apps/admin/README.md)의 "Railway 설정 체크리스트": Postgres, 저장소 연결 서비스 하나, 변수(`DATABASE_URL`, `ADMIN_PASSWORD`, `NOTION_*`), 도메인
+- [ ] [`apps/admin/README.md`](apps/admin/README.md)의 "Railway 설정 체크리스트": Postgres, 저장소 연결 서비스 하나, 변수(`DATABASE_URL`, `GOOGLE_CLIENT_ID`·`SECRET`, `ADMIN_EMAILS`, `NOTION_*`), 도메인, Google 로그인 만들기
 - 사진은 별도 저장소 없이 Postgres `image_files`에 두고, 빌드가 `/img/` 정적 파일로 꺼낸다
 
 ## 남은 TODO
