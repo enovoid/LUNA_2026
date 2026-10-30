@@ -1,4 +1,7 @@
+import notionSdk from '@notionhq/client';
 import PQueue from 'p-queue';
+
+const { ClientErrorCode } = notionSdk;
 
 export interface RateLimitedQueueOptions {
   /** 초당 요청 수. Notion은 연결당 평균 3회. */
@@ -36,7 +39,7 @@ export function parseRetryAfter(
 
 /** 응답을 받기 전에 끊긴 요청(네트워크 오류, SDK 타임아웃). 조회만 하므로 다시 보내도 안전하다. */
 function isNetworkError(error: object): boolean {
-  if ((error as { code?: unknown }).code === 'notionhq_client_request_timeout') return true;
+  if ((error as { code?: unknown }).code === ClientErrorCode.RequestTimeout) return true;
   return error instanceof TypeError && error.message === 'fetch failed';
 }
 
