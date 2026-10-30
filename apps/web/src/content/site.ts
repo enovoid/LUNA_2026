@@ -95,7 +95,7 @@ export const nav = [
   { key: 'members', label: '멤버', href: '/members' },
   { key: 'projects', label: '프로젝트', href: '/projects' },
   { key: 'awards', label: '수상', href: '/awards' },
-  { key: 'faq', label: 'FAQ', href: '/#faq' },
+  { key: 'faq', label: 'FAQ', href: '/faq' },
 ] as const;
 
 export type NavKey = (typeof nav)[number]['key'];

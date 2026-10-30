@@ -1,0 +1,109 @@
+---
+import EmptyState from '../components/EmptyState.astro';
+import FaqList from '../components/FaqList.astro';
+import PageHead from '../components/PageHead.astro';
+import { isRecruiting, site } from '../content/site';
+import Base from '../layouts/Base.astro';
+import { sortFaqs } from '../lib/content';
+import { loadSiteData } from '../lib/data';
+
+const { faqs } = await loadSiteData();
+const sorted = sortFaqs(faqs);
+const { email, instagram } = site.contact;
+---
+
+<Base title="자주 묻는 질문" description="루나 지원과 활동에 대해 자주 묻는 질문을 모았습니다." current="faq">
+  <PageHead title="자주 묻는 질문" lead="지원과 활동에 대해 궁금한 점을 모았습니다." />
+
+  <div class="container-page page-body">
+    {
+      sorted.length > 0 ? (
+        <FaqList faqs={sorted} />
+      ) : (
+        <EmptyState title="준비 중인 질문이 없어요" message={email ? `궁금한 점은 ${email}로 물어봐 주세요.` : undefined} />
+      )
+    }
+
+    {
+      (email || instagram || isRecruiting) && (
+        <aside class="more card" aria-label="더 궁금한 점">
+          <div class="more-text">
+            <h2>찾는 답이 없나요?</h2>
+            <p>운영진에게 직접 물어봐 주세요.</p>
+          </div>
+          <div class="more-actions">
+            {email && (
+              <a href={`mailto:${email}`} class="btn btn-ghost">
+                메일 보내기
+              </a>
+            )}
+            {instagram && (
+              <a href={instagram} class="btn btn-ghost" target="_blank" rel="noopener">
+                인스타그램<span class="sr-only">(새 창)</span>
+              </a>
+            )}
+            {isRecruiting && (
+              <a href={site.recruit.applyUrl} class="btn btn-primary" target="_blank" rel="noopener">
+                지원하기<span class="sr-only">(새 창)</span>
+              </a>
+            )}
+          </div>
+        </aside>
+      )
+    }
+  </div>
+</Base>
+
+<script>
+  // 주소의 #faq-<번호>와 같은 질문을 펼친다(목록이 닫힌 채로 시작하므로).
+  const open = () => {
+    const target = location.hash && document.getElementById(location.hash.slice(1));
+    if (target instanceof HTMLDetailsElement) target.open = true;
+  };
+  open();
+  window.addEventListener('hashchange', open);
+</script>
+
+<style>
+  .page-body {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-top: 32px;
+    padding-bottom: 96px;
+  }
+  /* 긴 문장을 읽기 좋은 폭(약 45자)으로 두되, 왼쪽 선은 제목과 맞춘다. */
+  .page-body > :global(*) {
+    max-width: 880px;
+  }
+  .more {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px 24px;
+    padding: 24px;
+  }
+  .more-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  h2 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+  }
+  .more-text p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--color-label-2);
+  }
+  .more-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+</style>

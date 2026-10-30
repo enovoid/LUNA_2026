@@ -50,9 +50,9 @@ ${base.join('\n')}
 ${light.join('\n')}
 }
 
-/* TODO: 다크 모드. 첫 버전은 라이트만 완성한다. 값은 준비돼 있으니 페이지별 확인 후 아래 선택자를
-   @media (prefers-color-scheme: dark) { :root { ... } } 로 바꾼다. */
-:root[data-theme="dark"] {
+/* 사이트는 밤하늘 톤 하나만 쓴다(<html class="theme-dark">). data-theme 속성은 사이트를 감싸는 쪽(미리보기 등)이
+   바꿀 수 있어 클래스로 고정한다. */
+:root.theme-dark {
 ${dark.join('\n')}
 }
 `;

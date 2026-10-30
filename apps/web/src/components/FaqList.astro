@@ -1,0 +1,88 @@
+---
+// 자주 묻는 질문 목록(디자인 시스템 List + 펼침). 홈 미리보기와 FAQ 페이지가 같이 쓴다.
+// 각 질문은 #faq-<번호>로 바로 열 수 있다(FAQ 페이지에서 주소의 해시와 같은 질문을 펼침).
+import type { Faq } from '../lib/data';
+
+interface Props {
+  faqs: Faq[];
+  /** 처음부터 펼쳐 둘 질문 수 */
+  openFirst?: number;
+  /** 질문 id 앞부분. 같은 페이지에 목록이 둘이면 겹치지 않게 바꾼다. */
+  idPrefix?: string;
+}
+const { faqs, openFirst = 0, idPrefix = 'faq' } = Astro.props;
+---
+
+<div class="faq card">
+  {
+    faqs.map((f, i) => (
+      <details id={`${idPrefix}-${i + 1}`} open={i < openFirst}>
+        <summary>
+          <span>{f.question}</span>
+          <span class="faq-chev" aria-hidden="true">›</span>
+        </summary>
+        <p>{f.answer}</p>
+      </details>
+    ))
+  }
+</div>
+
+<style>
+  /* 펼칠 때 높이가 스프링으로 열린다(지원 브라우저). 화살표는 snappy 스프링으로 돈다. */
+  .faq {
+    overflow: hidden;
+    interpolate-size: allow-keywords;
+  }
+  details {
+    padding: 0 20px;
+    scroll-margin-top: 96px;
+  }
+  details + details {
+    box-shadow: inset 0 1px 0 var(--color-separator);
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 60px;
+    padding-block: 12px;
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 600;
+  }
+  summary:focus-visible {
+    outline-offset: -2px;
+  }
+  .faq-chev {
+    font-size: 22px;
+    color: var(--color-label-2);
+    transition: transform var(--spring-snappy-dur) var(--spring-snappy);
+  }
+  details[open] .faq-chev {
+    transform: rotate(90deg);
+  }
+  details:target {
+    background: var(--color-lavender-tint);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    details::details-content {
+      block-size: 0;
+      overflow: clip;
+      transition:
+        block-size var(--spring-smooth-dur) var(--spring-smooth),
+        content-visibility var(--spring-smooth-dur) allow-discrete;
+    }
+    details[open]::details-content {
+      block-size: auto;
+    }
+  }
+  p {
+    margin: 0;
+    padding: 0 0 20px;
+    font-size: 17px;
+    line-height: 26px;
+    color: var(--color-label-2);
+    white-space: pre-line;
+  }
+</style>
