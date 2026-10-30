@@ -47,6 +47,7 @@ pnpm dev                    # 사이트 개발 서버
 | `pnpm db:migrate`             | `DATABASE_URL`에 마이그레이션 적용                                 |
 | `pnpm test`                   | 모든 패키지 테스트 (Vitest)                                        |
 | `pnpm sync`                   | Notion → Postgres 동기화 (`--full`, `--dry-run`, `--check-schema`) |
+| `pnpm import:notion <zip>`    | Notion 내보내기(Markdown & CSV)를 Postgres에 한 번 옮겨 담기       |
 
 ### 스키마를 바꿀 때
 
