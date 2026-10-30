@@ -1,7 +1,7 @@
-// 요청 처리. /admin 아래는 관리자 페이지(/admin/login 말고는 로그인 필요, 쓰기 요청은 같은 출처의 폼만),
+// 요청 처리. /admin 아래는 관리자 페이지(로그인 화면 말고는 Google 로그인 필요, 쓰기 요청은 같은 출처의 폼만),
 // 나머지 주소는 미리 만든 공개 사이트 파일이다.
 import { parseSettings, SETTINGS_KEYS, type SettingsKey } from '@luna/db/settings';
-import { type Auth, AuthError, type Viewer } from './auth.js';
+import { type Auth, AuthError, CALLBACK_PATH, isEmail, type Viewer } from './auth.js';
 import type { Jobs } from './jobs.js';
 import type { Site } from './site.js';
 import type { AdminStore } from './store.js';
@@ -20,14 +20,15 @@ export interface AppDeps {
   store(): AdminStore;
   site: Site;
   jobs: Jobs;
+  /** Railway 변수 ADMIN_EMAILS: 항상 들어올 수 있고 관리자 화면에서 지울 수 없는 운영진 */
+  ownerEmails: string[];
   now?: () => Date;
   log?: (message: string) => void;
 }
 
 const BASE = '/admin';
 
-/** client: 로그인 실패 횟수를 셀 접속 주소. */
-export async function handle(request: Request, deps: AppDeps, client = ''): Promise<Response> {
+export async function handle(request: Request, deps: AppDeps): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '') || '/';
 
@@ -44,11 +45,14 @@ export async function handle(request: Request, deps: AppDeps, client = ''): Prom
 
   const viewer = await deps.auth.viewer(request);
 
-  if (path === `${BASE}/login`) {
-    if (request.method === 'POST') return login(request, deps, client);
+  if (request.method === 'GET' && path === `${BASE}/login`) {
     if (viewer) return redirect(`${BASE}/`);
-    return html(renderLoginPage({}));
+    return html(renderLoginPage({ configured: deps.auth.configured() }));
   }
+  if (request.method === 'GET' && path === `${BASE}/login/google`) {
+    return startLogin(deps, url);
+  }
+  if (request.method === 'GET' && path === CALLBACK_PATH) return finishLogin(request, deps, url);
   if (path === `${BASE}/logout` && request.method === 'POST') {
     return redirect(`${BASE}/login`, deps.auth.logoutCookie());
   }
@@ -66,6 +70,8 @@ export async function handle(request: Request, deps: AppDeps, client = ''): Prom
   if (request.method === 'POST') {
     if (path === `${BASE}/sync`) return runSync(request, deps, viewer);
     if (path === `${BASE}/build`) return build(deps, viewer);
+    if (path === `${BASE}/admins/add`) return changeAdmins(request, deps, viewer, 'add');
+    if (path === `${BASE}/admins/remove`) return changeAdmins(request, deps, viewer, 'remove');
     const key = SETTINGS_KEYS.find((k) => path === `${BASE}/settings/${k}`);
     if (key) return saveSettings(request, deps, viewer, key);
   }
@@ -73,22 +79,67 @@ export async function handle(request: Request, deps: AppDeps, client = ''): Prom
   return text(404, '없는 주소입니다.');
 }
 
-async function login(request: Request, deps: AppDeps, client: string) {
-  const form = await request.formData();
-  const name = String(form.get('name') ?? '');
+async function startLogin(deps: AppDeps, url: URL) {
   try {
-    const cookie = await deps.auth.login({
-      name,
-      password: String(form.get('password') ?? ''),
-      client,
-    });
-    deps.log?.(`로그인: ${name.trim()}`);
-    return redirect(`${BASE}/`, cookie);
+    const { location, cookie } = await deps.auth.start(url.origin);
+    return redirect(location, cookie);
   } catch (error) {
     if (!(error instanceof AuthError)) throw error;
-    deps.log?.(`로그인 실패(${client}): ${error.message}`);
-    return html(renderLoginPage({ error: error.message, name }), 401);
+    return html(renderLoginPage({ configured: false, error: error.message }), 503);
   }
+}
+
+async function finishLogin(request: Request, deps: AppDeps, url: URL) {
+  try {
+    const { viewer, cookie } = await deps.auth.finish(request, url.origin, (email) =>
+      isAllowed(deps, email),
+    );
+    deps.log?.(`로그인: ${viewer.email}`);
+    return redirect(`${BASE}/`, cookie, deps.auth.clearLoginCookie());
+  } catch (error) {
+    if (!(error instanceof AuthError)) throw error;
+    deps.log?.(`로그인 실패: ${error.message}`);
+    const response = html(renderLoginPage({ configured: true, error: error.message }), 403);
+    response.headers.append('Set-Cookie', deps.auth.clearLoginCookie());
+    return response;
+  }
+}
+
+/** Railway 변수의 운영진 + 관리자 화면에서 추가한 운영진. DB를 못 읽어도 변수에 있는 사람은 들어온다. */
+async function isAllowed(deps: AppDeps, email: string): Promise<boolean> {
+  if (deps.ownerEmails.includes(email)) return true;
+  try {
+    return (await deps.store().adminEmails()).emails.includes(email);
+  } catch (error) {
+    deps.log?.(`운영진 목록을 읽지 못함: ${message(error)}`);
+    return false;
+  }
+}
+
+async function changeAdmins(
+  request: Request,
+  deps: AppDeps,
+  viewer: Viewer,
+  action: 'add' | 'remove',
+) {
+  const form = await request.formData();
+  const email = String(form.get('email') ?? '')
+    .trim()
+    .toLowerCase();
+  if (action === 'add' && !isEmail(email)) return redirect(`${BASE}/?notice=admin-invalid`);
+  try {
+    const current = (await deps.store().adminEmails()).emails;
+    const next =
+      action === 'add'
+        ? [...new Set([...current, email])].sort()
+        : current.filter((e) => e !== email);
+    await deps.store().saveAdminEmails(next, viewer.email);
+    deps.log?.(`운영진 ${action === 'add' ? '추가' : '삭제'}: ${email} (${viewer.email})`);
+  } catch (error) {
+    deps.log?.(`운영진 목록 저장 실패: ${message(error)}`);
+    return redirect(`${BASE}/?notice=db-failed`);
+  }
+  return redirect(`${BASE}/?notice=${action === 'add' ? 'admin-added' : 'admin-removed'}`);
 }
 
 async function runSync(request: Request, deps: AppDeps, viewer: Viewer) {
@@ -115,8 +166,8 @@ async function saveSettings(request: Request, deps: AppDeps, viewer: Viewer, key
   }
 
   try {
-    await deps.store().saveSetting(key, parsed.value, viewer.name);
-    deps.log?.(`설정 저장(${key}): ${viewer.name}`);
+    await deps.store().saveSetting(key, parsed.value, viewer.email);
+    deps.log?.(`설정 저장(${key}): ${viewer.email}`);
   } catch (error) {
     deps.log?.(`설정 저장 실패(${key}): ${message(error)}`);
     return redirect(`${BASE}/?notice=db-failed`);
@@ -134,13 +185,16 @@ async function loadPage(
   viewer: Viewer,
   notice: Notice | undefined,
 ): Promise<PageModel> {
-  const [sync, settings, generations] = await Promise.all([
+  const [sync, settings, generations, admins] = await Promise.all([
     load(() => deps.store().syncStates()),
     load(() => deps.store().settings()),
     load(() => deps.store().generations()),
+    load(() => deps.store().adminEmails()),
   ]);
   return {
     viewer,
+    owners: deps.ownerEmails,
+    admins,
     notice,
     sync,
     settings,
@@ -205,9 +259,9 @@ function text(status: number, body: string): Response {
 }
 
 /** POST 뒤에는 303으로 GET 화면에 보낸다(새로고침해도 다시 보내지 않게). */
-function redirect(location: string, cookie?: string): Response {
+function redirect(location: string, ...cookies: string[]): Response {
   const headers = new Headers({ Location: location, ...SECURITY_HEADERS });
-  if (cookie) headers.append('Set-Cookie', cookie);
+  for (const cookie of cookies) headers.append('Set-Cookie', cookie);
   return new Response(null, { status: 303, headers });
 }
 

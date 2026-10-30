@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handle } from './app.js';
-import { createAuth } from './auth.js';
+import { createAuth, parseEmails } from './auth.js';
 import { createJobs, pnpmRunner } from './jobs.js';
 import { createSite } from './site.js';
 import { type AdminStore, createStore } from './store.js';
@@ -35,7 +35,8 @@ const jobs = createJobs({
 let db: { store: AdminStore; close: () => Promise<void> } | undefined;
 
 const deps = {
-  auth: createAuth(env.ADMIN_PASSWORD),
+  auth: createAuth({ clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }),
+  ownerEmails: parseEmails(env.ADMIN_EMAILS),
   store: () => {
     if (!env.DATABASE_URL) throw new Error('DATABASE_URL이 설정되지 않았습니다.');
     db ??= createStore(env.DATABASE_URL);
@@ -48,7 +49,7 @@ const deps = {
 
 const server = createServer(async (req, res) => {
   try {
-    const response = await handle(await toRequest(req), deps, clientAddress(req));
+    const response = await handle(await toRequest(req), deps);
     const headers: [string, string][] = [];
     response.headers.forEach((value, key) => {
       if (key !== 'set-cookie') headers.push([key, value]);
@@ -130,13 +131,4 @@ async function toRequest(req: IncomingMessage): Promise<Request> {
     body = Buffer.concat(chunks);
   }
   return new Request(url, { method: req.method, headers, body });
-}
-
-/** 로그인 실패 횟수를 셀 접속 주소. Railway는 X-Real-IP에 실제 주소를 넣는다. */
-function clientAddress(req: IncomingMessage): string {
-  const real = req.headers['x-real-ip'];
-  if (typeof real === 'string' && real) return real;
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded) return forwarded.split(',')[0]?.trim() ?? '';
-  return req.socket.remoteAddress ?? '';
 }

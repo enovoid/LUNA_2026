@@ -7,6 +7,7 @@ import {
   type SettingsByKey,
   type SettingsKey,
 } from '@luna/db/settings';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
@@ -36,7 +37,19 @@ export interface AdminStore {
   ): Promise<void>;
   /** 멤버 DB에 있는 루나 기수 번호(예: "LUNA 8기" → 8). 모집 기수 선택지를 만든다. */
   generations(): Promise<number[]>;
+  /** 관리자 화면에서 추가한 운영진 이메일(Railway 변수 ADMIN_EMAILS와 별개) */
+  adminEmails(): Promise<StoredAdmins>;
+  saveAdminEmails(emails: string[], editor: string): Promise<void>;
 }
+
+export interface StoredAdmins {
+  emails: string[];
+  updatedAt: Date | null;
+  updatedBy: string | null;
+}
+
+/** site_settings에 운영진 목록을 두는 키. 사이트 빌드는 읽지 않는다. */
+const ADMINS_KEY = 'admins';
 
 /** "LUNA 8기", "8기", "8" 같은 값에서 기수 번호만 뽑는다. */
 export function generationNumber(value: string | null): number | undefined {
@@ -85,6 +98,25 @@ export function createStore(url: string): { store: AdminStore; close: () => Prom
         .map((row) => generationNumber(row.generation))
         .filter((n): n is number => n !== undefined);
       return [...new Set(numbers)].sort((a, b) => a - b);
+    },
+    async adminEmails() {
+      const [row] = await db.select().from(siteSettings).where(eq(siteSettings.key, ADMINS_KEY));
+      const value = row?.value as { emails?: unknown } | undefined;
+      const emails = Array.isArray(value?.emails)
+        ? value.emails.filter((e): e is string => typeof e === 'string')
+        : [];
+      return { emails, updatedAt: row?.updatedAt ?? null, updatedBy: row?.updatedBy ?? null };
+    },
+    async saveAdminEmails(emails, editor) {
+      const now = new Date();
+      const value = { emails };
+      await db
+        .insert(siteSettings)
+        .values({ key: ADMINS_KEY, value, updatedAt: now, updatedBy: editor })
+        .onConflictDoUpdate({
+          target: siteSettings.key,
+          set: { value, updatedAt: now, updatedBy: editor },
+        });
     },
   };
 

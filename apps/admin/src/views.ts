@@ -8,12 +8,16 @@ import {
 } from '@luna/db/settings';
 import { type Html, html, raw } from './html.js';
 import type { JobRun, JobsStatus } from './jobs.js';
-import type { StoredSetting, SyncStateRow } from './store.js';
+import type { StoredAdmins, StoredSetting, SyncStateRow } from './store.js';
 
 export type Loaded<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export interface PageModel {
-  viewer: { name: string };
+  viewer: { email: string; name: string };
+  /** Railway 변수 ADMIN_EMAILS(관리자 화면에서 못 지움) */
+  owners: string[];
+  /** 관리자 화면에서 추가한 운영진 */
+  admins: Loaded<StoredAdmins>;
   notice?: Notice;
   sync: Loaded<SyncStateRow[]>;
   jobs: JobsStatus;
@@ -37,6 +41,15 @@ export const NOTICES = {
     text: '사이트를 다시 만들기 시작했어요. 1~2분 걸리고, 그동안은 이전 사이트가 그대로 보여요.',
   },
   saved: { tone: 'ok', text: '저장했어요. 사이트를 다시 만들고 있어요(1~2분 뒤 반영).' },
+  'admin-added': {
+    tone: 'ok',
+    text: '운영진을 추가했어요. 그 Google 계정으로 바로 로그인할 수 있어요.',
+  },
+  'admin-removed': {
+    tone: 'ok',
+    text: '운영진에서 뺐어요. 이미 로그인한 세션은 최대 12시간 뒤에 끝나요.',
+  },
+  'admin-invalid': { tone: 'error', text: '이메일 주소 형식이 올바르지 않아요.' },
   'db-failed': {
     tone: 'error',
     text: '데이터베이스에 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.',
@@ -87,19 +100,19 @@ function documentHead(): Html {
 </head>`;
 }
 
-export function renderLoginPage(model: { error?: string; name?: string }): string {
+export function renderLoginPage(model: { configured: boolean; error?: string }): string {
   return html`${documentHead()}
 <body>
 <main class="wrap login">
   <section aria-labelledby="login-title">
     <h1 id="login-title">LUNA 관리자</h1>
-    <p class="help">운영진만 들어올 수 있어요. 이름은 누가 무엇을 바꿨는지 기록에 남아요.</p>
+    <p class="help">운영진 목록에 있는 Google 계정만 들어올 수 있어요. 누가 무엇을 바꿨는지 이메일로 기록에 남아요.</p>
     ${model.error ? html`<p class="notice error" role="alert">${model.error}</p>` : ''}
-    <form method="post" action="/admin/login" class="fields">
-      <label><span>이름</span><input name="name" value="${model.name ?? ''}" autocomplete="name" maxlength="40" required></label>
-      <label><span>비밀번호</span><input type="password" name="password" autocomplete="current-password" required></label>
-      <div class="actions"><button type="submit">로그인</button></div>
-    </form>
+    ${
+      model.configured
+        ? html`<div class="actions"><a class="button" href="/admin/login/google">Google 계정으로 로그인</a></div>`
+        : html`<p class="notice warn">Google 로그인이 아직 설정되지 않았어요. Railway 변수 GOOGLE_CLIENT_ID와 GOOGLE_CLIENT_SECRET을 넣어 주세요.</p>`
+    }
   </section>
 </main>
 </body>
@@ -114,7 +127,7 @@ export function renderPage(model: PageModel): string {
     <strong class="brand">LUNA 관리자</strong>
     <nav>
       <a href="/" target="_blank" rel="noopener">사이트 열기</a>
-      <span class="who">${model.viewer.name}</span>
+      <span class="who" title="${model.viewer.email}">${model.viewer.name}</span>
       <form method="post" action="/admin/logout" class="inline"><button type="submit" class="link">로그아웃</button></form>
     </nav>
   </div>
@@ -126,6 +139,7 @@ export function renderPage(model: PageModel): string {
   ${siteSection(model)}
   ${settingsSection(model, 'recruit')}
   ${settingsSection(model, 'contact')}
+  ${adminsSection(model)}
 </main>
 </body>
 </html>`;
@@ -315,6 +329,36 @@ function generationSelect(current: string, known: Loaded<number[]>): Html {
   </select>`;
 }
 
+function adminsSection(model: PageModel): Html {
+  const added = model.admins.ok
+    ? model.admins.value.emails.filter((e) => !model.owners.includes(e))
+    : [];
+  return html`<section aria-labelledby="admins-title">
+  <h2 id="admins-title">운영진</h2>
+  <p class="help">여기 있는 Google 계정만 관리자 페이지에 들어올 수 있어요.</p>
+  ${!model.admins.ok ? html`<p class="notice error">운영진 목록을 읽지 못했어요: ${model.admins.error}</p>` : ''}
+  <ul class="runs">
+    ${model.owners.map(
+      (email) =>
+        html`<li><span>${email}</span><span class="muted">Railway 변수 ADMIN_EMAILS(여기서 못 지움)</span></li>`,
+    )}
+    ${added.map(
+      (email) => html`<li><span>${email}</span>
+      <form method="post" action="/admin/admins/remove" class="inline"><input type="hidden" name="email" value="${email}"><button type="submit" class="link">빼기</button></form></li>`,
+    )}
+  </ul>
+  <form method="post" action="/admin/admins/add" class="actions">
+    <input type="email" name="email" placeholder="new@gmail.com" autocomplete="off" required>
+    <button type="submit" ${model.admins.ok ? '' : html`disabled`}>추가</button>
+  </form>
+  ${
+    model.admins.ok && model.admins.value.updatedBy
+      ? html`<p class="muted">마지막 수정 ${formatTime(model.admins.value.updatedAt)} · ${model.admins.value.updatedBy}</p>`
+      : ''
+  }
+</section>`;
+}
+
 const DATE_FIELDS = new Set(['startDate', 'endDate']);
 
 function statusSelect(current: string): Html {
@@ -391,8 +435,9 @@ thead th { color: var(--muted); font-weight: 500; }
 .check { display:flex; gap:6px; align-items:center; font-size:14px; }
 .fields label { display:block; margin: 0 0 12px; }
 .fields label span { display:block; font-size: 14px; margin-bottom: 4px; }
-input:not([type]), input[type=text], input[type=password], input[type=date], select { width:100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
-button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--accent); color: var(--onaccent); cursor: pointer; }
+input:not([type]), input[type=text], input[type=email], input[type=date], select { width:100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+button, a.button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--accent); color: var(--onaccent); cursor: pointer; }
+a.button { display: inline-block; text-decoration: none; }
 button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
 button.link { background: none; color: var(--accent); padding: 0; font-weight: 400; text-decoration: underline; }
 form.inline { display: inline; margin: 0; }

@@ -13,7 +13,7 @@ Railway 서비스 하나가 다음을 모두 맡는다. 주소도 하나다(`/`�
 Notion ─(15분마다, 바뀐 페이지만)→ [이 서버: sync 자식 프로세스] ─→ Railway Postgres
                                          └ 바뀐 게 있으면 → astro build(새 폴더) → 성공하면 그 폴더로 교체
 방문자 ─→ [이 서버] ─→ 미리 만든 파일(압축·캐시 헤더·ETag)
-운영진 ─→ [이 서버] /admin/ (비밀번호 로그인) ─→ Postgres(site_settings 쓰기) → 사이트 다시 만들기
+운영진 ─→ [이 서버] /admin/ (Google 로그인) ─→ Postgres(site_settings 쓰기) → 사이트 다시 만들기
 ```
 
 ## 모집 정보
@@ -27,9 +27,10 @@ Notion ─(15분마다, 바뀐 페이지만)→ [이 서버: sync 자식 프로�
 
 ## 로그인과 보안
 
-- Railway 변수 `ADMIN_PASSWORD`(12자 이상) 하나로 들어온다. 로그인할 때 적은 이름이 `site_settings.updated_by`에 남는다.
-- 세션은 서명한 쿠키(`__Host-luna_admin`, HttpOnly·Secure·SameSite=Lax, 12시간). 비밀번호를 바꾸면 모든 세션이 끊긴다.
-- 같은 접속 주소에서 10분에 5번, 전체로 10분에 30번 틀리면 잠시 막는다(서버 메모리, 재시작하면 초기화).
+- **Google 계정**으로 들어온다(OpenID Connect: state·nonce 확인, Google 공개 키로 id_token 서명·발급자·대상 검증, 이메일 확인된 계정만). 공용 비밀번호는 없다.
+- 들어올 수 있는 사람: Railway 변수 `ADMIN_EMAILS`(쉼표로 구분, 화면에서 못 지움) + 관리자 화면 "운영진"에서 추가한 이메일(`site_settings`의 `admins`). 사람이 바뀌면 화면에서 추가·빼기만 하면 된다.
+- 누가 설정을 바꿨는지 `site_settings.updated_by`에 Google 이메일로 남는다.
+- 세션은 서명한 쿠키(`__Host-luna_admin`, HttpOnly·Secure·SameSite=Lax, 12시간). `GOOGLE_CLIENT_SECRET`을 바꾸면 모든 세션이 끊긴다. 운영진에서 뺀 사람의 세션은 최대 12시간 뒤 끝난다.
 - 쓰기(POST)는 같은 출처에서 보낸 폼만 받는다(`Origin` 확인, CSRF 방지).
 - 관리자 화면은 `no-store`, `noindex`, CSP(`default-src 'none'`, 스크립트 없음), `frame-ancestors 'none'`.
 
@@ -41,26 +42,37 @@ Notion ─(15분마다, 바뀐 페이지만)→ [이 서버: sync 자식 프로�
 2. [ ] New → **GitHub Repo** → `enovoid/LUNA_2026` 선택. Root Directory는 비워 둔다(저장소 루트)
 3. [ ] 새 서비스 **Variables**에 추가
 
-   | 이름                                                                        | 값                                                         |
-   | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-   | `DATABASE_URL`                                                              | `${{Postgres.DATABASE_URL}}` (내부 주소 참조)              |
-   | `ADMIN_PASSWORD`                                                            | 운영진이 함께 쓸 비밀번호(12자 이상, 다른 데서 안 쓰는 값) |
-   | `NOTION_TOKEN`                                                              | Notion integration 토큰                                    |
-   | `NOTION_DB_MEMBERS` `NOTION_DB_AWARDS` `NOTION_DB_PROJECTS` `NOTION_DB_FAQ` | 각 Notion DB ID                                            |
-   | `SITE_URL`                                                                  | (선택) 직접 연결한 도메인. 없으면 Railway 도메인을 쓴다    |
-   | `SYNC_INTERVAL_MINUTES`                                                     | (선택) 동기화 간격, 기본 15. 0이면 자동 동기화를 끈다      |
+   | 이름                                                                        | 값                                                      |
+   | --------------------------------------------------------------------------- | ------------------------------------------------------- |
+   | `DATABASE_URL`                                                              | `${{Postgres.DATABASE_URL}}` (내부 주소 참조)           |
+   | `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET`                                   | 아래 "Google 로그인 만들기"에서 받은 값                 |
+   | `ADMIN_EMAILS`                                                              | 처음 들어올 운영진 Google 이메일(쉼표로 구분)           |
+   | `NOTION_TOKEN`                                                              | Notion integration 토큰                                 |
+   | `NOTION_DB_MEMBERS` `NOTION_DB_AWARDS` `NOTION_DB_PROJECTS` `NOTION_DB_FAQ` | 각 Notion DB ID                                         |
+   | `SITE_URL`                                                                  | (선택) 직접 연결한 도메인. 없으면 Railway 도메인을 쓴다 |
+   | `SYNC_INTERVAL_MINUTES`                                                     | (선택) 동기화 간격, 기본 15. 0이면 자동 동기화를 끈다   |
 
 4. [ ] Settings → Networking → **Generate Domain**(또는 Custom Domain 연결)
 5. [ ] 배포가 끝나면(첫 배포는 사이트를 만드느라 2~4분) `https://<도메인>/`과 `https://<도메인>/admin/` 열어 보기
 6. [ ] 예전 `sync` Cron 서비스가 있으면 **삭제**한다. 이제 이 서버가 동기화하고, 따로 돌면 바뀐 내용이 사이트에 반영되지 않는다
-7. [ ] (선택) Cloudflare의 `luna-2026`·`luna-admin` Worker 삭제, GitHub Secrets의 `CLOUDFLARE_*` 삭제
+7. [ ] 예전 `ADMIN_PASSWORD` 변수가 있으면 지운다(더 이상 쓰지 않음)
+8. [ ] (선택) Cloudflare의 `luna-2026`·`luna-admin` Worker 삭제, GitHub Secrets의 `CLOUDFLARE_*` 삭제
+
+### Google 로그인 만들기 (Google Cloud, 무료·카드 없음)
+
+1. [ ] [console.cloud.google.com](https://console.cloud.google.com) → 프로젝트 만들기(예: `luna-admin`)
+2. [ ] **Google Auth Platform**(또는 APIs & Services → OAuth consent screen) → 시작하기: 앱 이름 `LUNA 관리자`, 지원 이메일, 대상 **External**
+3. [ ] **Audience**에서 앱을 **Publish(In production)** 로 바꾼다. 이메일·프로필만 요청하므로 Google 심사가 필요 없고, Testing으로 두면 테스트 사용자로 등록한 계정만 로그인된다
+4. [ ] **Clients → Create client** → 유형 **Web application** → Authorized redirect URIs에 `https://<도메인>/admin/auth/callback` 추가(Railway 도메인과 내 도메인을 둘 다 쓰면 둘 다)
+5. [ ] 만들어진 Client ID와 Client secret을 Railway 변수 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`에 넣는다
 
 배포 순서: Railway가 새 버전을 빌드 → `pnpm db:migrate` → 서버 시작 → 사이트를 다 만들면 `/health`가 200 → 그때 트래픽이 새 버전으로 넘어간다. 사이트를 만들지 못하면 새 버전은 실패로 끝나고 이전 버전이 계속 응답한다.
 
 ## 로컬 실행
 
 ```bash
-# .env(apps/admin/.env)에 DATABASE_URL, ADMIN_PASSWORD, NOTION_* 를 넣는다(커밋하지 않음)
+# .env(apps/admin/.env)에 DATABASE_URL, GOOGLE_CLIENT_ID·SECRET, ADMIN_EMAILS, NOTION_* 를 넣는다(커밋하지 않음)
+# Google 클라이언트의 redirect URI에 http://localhost:8787/admin/auth/callback 도 추가해 둔다
 pnpm --filter @luna/admin dev     # http://localhost:8787/ , http://localhost:8787/admin/
 pnpm --filter @luna/admin test
 ```
@@ -77,4 +89,4 @@ DB 없이 화면만 보려면 `LUNA_DATA_SOURCE=mock SYNC_INTERVAL_MINUTES=0`을
 | 설정 값이 잘못됨(http 링크, 날짜 순서 등) | 저장하지 않고 입력을 유지한 채 무엇을 고칠지 보여 준다                                                           |
 | 동기화가 1시간 넘게 안 돎                 | 해당 DB 줄에 "1시간 넘게 멈춤" 표시                                                                              |
 | 동기화·빌드 요청이 겹침                   | 한 번에 하나씩, 대기 중인 같은 요청은 하나로 합친다. 다른 곳에서 돈 동기화와는 `_running` 잠금으로 겹치지 않는다 |
-| 비밀번호를 여러 번 틀림                   | 10분 동안 막는다                                                                                                 |
+| 운영진 목록에 없는 Google 계정            | 403, "운영진 목록에 없어요" 안내. DB가 끊겨도 `ADMIN_EMAILS`의 운영진은 들어온다                                 |
