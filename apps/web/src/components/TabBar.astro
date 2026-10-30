@@ -61,6 +61,27 @@ const tabs = [
     padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
     pointer-events: none;
   }
+  /* 탭 바 조금 위부터 화면 아래 끝까지 흐림 + 바탕색으로 서서히 덮어, 스크롤되는 글자가 탭 바와 겹쳐 보이지 않게 한다.
+     요소 자신이 아닌 형제 층이라 탭 알약의 흐림(backdrop root)에 영향이 없고, 고정 위치라 레이아웃도 안 바뀐다. */
+  .tab-bar::before {
+    content: "";
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: -1;
+    height: calc(max(12px, env(safe-area-inset-bottom)) + 62px + 32px);
+    background: linear-gradient(to top, rgb(28 28 30 / 0.9) 35%, rgb(28 28 30 / 0));
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(to top, #000 55%, transparent);
+    mask-image: linear-gradient(to top, #000 55%, transparent);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .tab-bar::before {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
   ul {
     display: flex;
     width: 100%;
