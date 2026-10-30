@@ -44,15 +44,14 @@ export const site = {
   },
 
   /** 인트로 사진 출처 표기. 라이선스상 필요하면 채운다(푸터에 표시). */
-  photoCredit: '', // TODO: 라이선스 확인
+  photoCredit: 'Unsplash',
 
   introScene: {
     /**
-     * 실제 밤 도시 사진을 쓸지. 에셋(public/intro/*.webp)을 넣고 라이선스를 확인한 뒤 true로 바꾼다.
+     * 실제 밤 도시 사진을 쓸지(public/intro/*.webp, Unsplash 라이선스).
      * false면 같은 좌표에 CSS로 그린 임시 하늘·달을 쓴다.
-     * TODO: 라이선스 확인
      */
-    usePhotos: false,
+    usePhotos: true,
     desktop: {
       aspect: 2400 / 1350,
       moonX: 49.38,
