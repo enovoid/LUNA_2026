@@ -21,7 +21,8 @@
     "start": "pnpm --filter @luna/admin start",
     "db:generate": "pnpm --filter @luna/db generate",
     "db:migrate": "pnpm --filter @luna/db migrate",
-    "sync": "pnpm --filter @luna/sync sync"
+    "sync": "pnpm --filter @luna/sync sync",
+    "import:notion": "pnpm --filter @luna/sync import:notion"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",

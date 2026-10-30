@@ -50,6 +50,17 @@ export class ImagePipeline {
     }
 
     const bytes = await download(file.url, this.downloadOptions);
+    const outcome = await this.processBytes(database, bytes, file.name);
+    if (cacheKey) this.cache.set(cacheKey, outcome.image);
+    return { ...outcome, downloaded: true };
+  }
+
+  /** 이미 가진 원본 바이트(Notion 내보내기 파일 등)를 WebP로 바꿔 올린다. 캐시는 쓰지 않는다. */
+  async processBytes(
+    database: ImageDatabase,
+    bytes: Uint8Array,
+    name: string,
+  ): Promise<Omit<ImageOutcome, 'downloaded'>> {
     const imageKey = imageKeyFor(database, bytes);
     let uploaded = false;
     try {
@@ -65,15 +76,14 @@ export class ImagePipeline {
       }
       const size = await displaySize(bytes);
       const image: ProcessedImage = { imageKey, ...size };
-      if (cacheKey) this.cache.set(cacheKey, image);
-      return { image, downloaded: true, uploaded };
+      return { image, uploaded };
     } catch (error) {
       if (
         error instanceof Error &&
         /unsupported image format|Input buffer contains unsupported/i.test(error.message)
       ) {
         throw new Error(
-          `이미지 형식을 읽을 수 없습니다(${file.name}). JPG·PNG·WebP·AVIF·GIF로 올려 주세요.`,
+          `이미지 형식을 읽을 수 없습니다(${name}). JPG·PNG·WebP·AVIF·GIF로 올려 주세요.`,
         );
       }
       throw error;

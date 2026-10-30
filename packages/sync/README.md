@@ -9,6 +9,7 @@ pnpm sync                 # 증분 동기화 (루트 .env를 자동으로 읽음
 pnpm sync --dry-run       # DB 쓰기와 빌드 호출 없이 무엇이 바뀔지만 출력
 pnpm sync --full          # 마지막 동기화 시각을 무시하고 전부 다시 반영
 pnpm sync --check-schema  # Notion 스키마만 확인하고 끝냄
+pnpm import:notion <zip>  # Notion 내보내기(zip)를 한 번 옮겨 담기(아래 "내보내기로 가져오기")
 pnpm --filter @luna/sync test
 ```
 
@@ -17,6 +18,25 @@ pnpm --filter @luna/sync test
 따로 배포하는 서비스는 없다. 사이트 서버가 `pnpm --filter @luna/sync start`로 실행하며 서버의 환경 변수(Railway Variables)를 그대로 넘긴다. 로컬에서는 `pnpm sync`로 직접 돌릴 수 있다(이때는 빌드 알림 없음).
 
 관리자 페이지의 "지금 다시 동기화"는 같은 명령을 GitHub Actions(`.github/workflows/sync.yml`, `SYNC_TRIGGER=admin`)에서 돌린다. 실행은 시작할 때 `sync_state._running`을 잡고, 다른 실행이 잡고 있으면 아무것도 하지 않고 종료 코드 0으로 끝난다(`--dry-run`은 잠그지 않음).
+
+## 내보내기로 가져오기 (integration을 공유하지 못했을 때)
+
+Notion DB에 integration을 연결할 수 없을 때, DB를 **Markdown & CSV(하위 페이지 포함)** 로 내보낸 zip을 한 번 옮겨 담는다. 행은 동기화와 같은 모양으로, 사진은 같은 WebP 세 장으로 `image_files`에 들어간다.
+
+```bash
+pnpm import:notion --dry-run ~/Downloads/Export-….zip   # 무엇을 찾았는지와 사진 변환까지만 확인
+DATABASE_URL='<Railway Postgres의 공개 URL>' pnpm import:notion ~/Downloads/Export-….zip ~/Downloads/Export2-….zip
+```
+
+- zip(안에 든 `Part-N.zip` 포함)이나 압축을 푼 폴더를 여러 개 넘길 수 있다. CSV 머리글로 members·awards·projects·faqs를 알아내고, `X_all.csv`가 있으면 그것만 쓴다. 내보내기에 없는 DB는 건드리지 않는다.
+- 다시 실행하면 같은 행을 덮어쓴다. 지난 가져오기에만 있던 행은 지운다.
+- 끝나면 관리자 페이지에서 **사이트 만들기**를 누른다.
+
+나중에 integration을 공유해도 동기화와 겹치지 않는다.
+
+- `notion_id`는 하위 페이지 파일 이름의 진짜 페이지 ID. 같은 제목이 여럿이라 어느 페이지인지 모르면 `notion-export:<db>:<해시>` 임시 ID를 쓰고, 연결 뒤 첫 동기화가 이 행을 지우고 진짜 페이지로 새로 만든다.
+- `notion_last_edited_at`은 1970-01-01. 동기화가 수정 시각이 다르다고 보고 모든 행을 덮어쓴다.
+- 동기화가 이미 쓴 행(수정 시각이 1970이 아닌 행)은 가져오기가 건너뛴다. `sync_state`도 건드리지 않아 연결 뒤 첫 동기화는 전체 조회다.
 
 ## 한 번의 실행 순서
 
