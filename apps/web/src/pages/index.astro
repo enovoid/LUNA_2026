@@ -28,7 +28,7 @@ const recruitNote = {
   open: '',
   closed: '모집이 마감됐어요. 다음 모집 때 만나요!',
 }[recruiting];
-const stats = computeStats(members, awards);
+const stats = computeStats(members, awards, projects);
 const sortedFaqs = sortFaqs(faqs);
 // 홈에는 앞의 질문 몇 개만 보이고 나머지는 FAQ 페이지에서 본다.
 const homeFaqs = sortedFaqs.slice(0, 3);
@@ -50,6 +50,13 @@ const statItems = [
     format: 'won',
     unit: '',
     label: '상금',
+  },
+  {
+    value: `${stats.projectCount.toLocaleString('ko-KR')}개`,
+    count: stats.projectCount,
+    format: 'count',
+    unit: '개',
+    label: '프로젝트',
   },
   {
     value: `${stats.memberCount.toLocaleString('ko-KR')}명`,
@@ -90,7 +97,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     <section aria-labelledby="stats-title" class="container-page section-stack">
       <div class="headline" data-reveal>
         <span class="eyebrow">BY THE NUMBERS</span>
-        <h2 id="stats-title">루나</h2>
+        <h2 id="stats-title">도전으로 증명해 온 기록</h2>
       </div>
       <ul class="stats" data-reveal>
         {
@@ -320,13 +327,19 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
   }
 
   /* 숫자: 큰 그라데이션 숫자 + 작은 설명. 세어 올라가는 동안에도 칸 크기는 그대로(tabular-nums, 한 줄). */
+  /* 4칸: 좁으면 한 줄에 하나, 넓으면 2×2. 상금(₩…)이 길어서 한 줄 4칸은 넘친다. */
   .stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: 1fr;
     gap: 16px;
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+  @media (min-width: 900px) {
+    .stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
   .stat {
     display: flex;

@@ -74,10 +74,11 @@ export function isTopPrize(prize: string) {
   return /(^|\s)(1위|1등|대상|최우수상?|금상|우승)(\s|$)/.test(prize.trim());
 }
 
-export function computeStats(members: Member[], awards: Award[]) {
+export function computeStats(members: Member[], awards: Award[], projects: Project[]) {
   return {
     awardCount: awards.length,
     prizeTotal: awards.reduce((sum, a) => sum + (a.prizeMoney ?? 0), 0),
+    projectCount: projects.length,
     memberCount: members.length,
   };
 }
