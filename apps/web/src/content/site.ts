@@ -23,8 +23,14 @@ export interface IntroSceneVariant {
 
 export const site = {
   name: 'LUNA',
-  title: '루나 LUNA — IT 소셜벤처 동아리',
-  description: '세상을 비추는 달, LUNA. IT 소셜벤처 동아리.',
+  /** 검색 결과·공유 카드에 나오는 홈 제목. 사람들이 검색할 낱말(루나, LUNA, 디미고, 동아리)을 앞에 둔다. */
+  title: '루나 LUNA — 디미고 IT 소셜벤처 동아리',
+  /** 검색 결과 설명(약 80자 이내가 잘리지 않는다). 페이지마다 따로 주지 않으면 이 값을 쓴다. */
+  description:
+    '세상을 비추는 달, LUNA. 한국디지털미디어고등학교(디미고) IT 소셜벤처 동아리 루나의 멤버, 프로젝트, 수상 기록과 모집 소식.',
+  /** 구조화 데이터(JSON-LD)의 다른 이름. 검색어로 들어올 만한 표기를 모은다. */
+  alternateNames: ['루나', 'LUNA', '디미고 루나', 'Dimigo LUNA'],
+  school: '한국디지털미디어고등학교',
   /** TODO: 창립 연도 확인(요청서 기준 2018). 비우면(null) "Since …" 문구를 숨긴다. */
   foundedYear: 2018 as number | null,
 

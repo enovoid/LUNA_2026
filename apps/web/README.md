@@ -10,11 +10,13 @@ pnpm dev                 # DATABASE_URL이 없으면 목업 데이터로 뜬다
 pnpm --filter @luna/web build && pnpm --filter @luna/web preview
 ```
 
-| 환경 변수          | 설명                                                                                                                              |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `LUNA_DATA_SOURCE` | `db` 또는 `mock`. 비우면 `DATABASE_URL`이 있을 때 db, 없을 때 mock. CI에서 둘 다 없으면 빌드를 멈춘다(목업이 배포되는 사고 방지). |
-| `DATABASE_URL`     | 빌드 시 읽을 Postgres                                                                                                             |
-| `SITE_URL`         | canonical·sitemap·OG의 절대 주소. TODO: 도메인 확정                                                                               |
+| 환경 변수                  | 설명                                                                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `LUNA_DATA_SOURCE`         | `db` 또는 `mock`. 비우면 `DATABASE_URL`이 있을 때 db, 없을 때 mock. CI에서 둘 다 없으면 빌드를 멈춘다(목업이 배포되는 사고 방지). |
+| `DATABASE_URL`             | 빌드 시 읽을 Postgres                                                                                                             |
+| `SITE_URL`                 | canonical·sitemap·OG의 절대 주소. TODO: 도메인 확정                                                                               |
+| `GOOGLE_SITE_VERIFICATION` | (선택) Google Search Console 소유 확인 HTML 태그의 `content` 값. 넣으면 모든 페이지 `<head>`에 태그가 붙는다.                     |
+| `NAVER_SITE_VERIFICATION`  | (선택) 네이버 서치어드바이저 소유 확인 HTML 태그의 `content` 값.                                                                  |
 
 목업으로 빌드한 화면은 푸터에 빨간 글씨로 "목업 데이터로 빌드한 화면"이 붙는다.
 
@@ -26,12 +28,15 @@ src/
                          (모집 정보·연락처는 관리자 페이지 → DB site_settings → loadSiteData().settings)
   lib/data/              데이터 진입점(db.ts / mock.ts), 행 검증
   lib/content.ts         정렬·묶음·통계·이름 연결
+  lib/seo.ts             구조화 데이터(JSON-LD): 홈 WebSite·Organization, 하위 페이지 빵부스러기, FAQ
   lib/image.ts           /img/ srcset(480/960/1600)
   pages/img/[...file].ts DB(image_files)의 사진을 dist/img/ 정적 파일로 내보냄
   components/            Header, TabBar, Footer, ScrollIntro, 카드, Picture, EmptyState, Filter, NavPerf
   scripts/               intro.ts(GSAP), reveal.ts, header-bar.ts, segmented.ts(필터), nav-pending.ts(이동 스켈레톤)
   styles/                tokens.json(디자인 시스템 원본) → tokens.css(생성), global.css(Tailwind v4 @theme)
 public/intro/            인트로 사진 4장 + 달 고해상도 2장
+public/og.png            공유 카드·검색 미리보기 이미지(1200×630)
+public/favicon.ico, apple-touch-icon.png, icon-512.png  검색 결과·홈 화면 아이콘(512는 구조화 데이터 로고)
 public/sw.js             서비스 워커(재방문 캐시)
 public/_headers          캐시 헤더(사이트 서버가 읽음)
 ```
