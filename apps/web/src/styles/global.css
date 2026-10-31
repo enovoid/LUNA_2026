@@ -385,39 +385,6 @@ html body {
   }
 }
 
-/* 화면에 들어올 때의 등장 효과. JS가 있을 때만 숨겨 둔다.
-   기본: 24px 아래에서 smooth 스프링으로 올라오며 나타남. [data-reveal-item]은 --i 순서로 70ms씩 늦게.
-   동작 줄이기: 위치 이동 없이 크로스페이드만(HIG: 움직임을 디졸브로 대체). */
-html.js [data-reveal],
-html.js [data-reveal-item] {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-html.js .is-revealed[data-reveal],
-html.js .is-revealed [data-reveal-item] {
-  opacity: 1;
-}
-@media (prefers-reduced-motion: no-preference) {
-  html.js [data-reveal],
-  html.js [data-reveal-item] {
-    transform: translate3d(0, 24px, 0);
-    transition:
-      opacity 0.6s ease-out,
-      transform 1s var(--spring-smooth);
-  }
-  html.js [data-reveal-item] {
-    transition-delay: calc(var(--i, 0) * 70ms);
-  }
-  html.js .is-revealed[data-reveal],
-  html.js .is-revealed [data-reveal-item] {
-    transform: none;
-  }
-  /* 묶음 안의 항목이 각자 움직이면 묶음 자체는 제자리에서 나타나기만 한다. */
-  html.js [data-reveal]:has([data-reveal-item]) {
-    transform: none;
-  }
-}
-
 /* 페이지 이동: 같은 사이트 안에서는 문서 사이를 크로스페이드로 잇고, 헤더·탭 바는 제자리에 둔다(공간 연속성). */
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {

@@ -58,7 +58,7 @@ const buildings = Array.from({ length: 40 }, (_, i) => ({
   w: 2.6,
   h: 8 + rand() * 22,
 }));
-const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
+const sinceYear = site.foundedYear ? ` · Since ${site.foundedYear}` : '';
 ---
 
 <section id="luna-intro" class="intro" data-intro data-config={config} data-header-clear style={vars} aria-labelledby="intro-title">
@@ -124,7 +124,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
         </div>
       </div>
       <div class="intro-title" data-layer="title">
-        <p class="intro-eyebrow">IT SOCIAL VENTURE{sinceYear}</p>
+        <p class="intro-eyebrow">IT Social Venture{sinceYear}</p>
         <h1 id="intro-title">세상을 비추는 달, LUNA</h1>
       </div>
     </div>
@@ -432,7 +432,6 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     font-size: 15px;
     line-height: 20px;
     font-weight: 600;
-    letter-spacing: 0.18em;
     color: var(--text-2);
   }
   h1 {

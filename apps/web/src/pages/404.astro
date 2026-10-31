@@ -9,6 +9,7 @@ import Base from '../layouts/Base.astro';
       <span class="nf-code">404</span>
     </div>
     <h1 id="nf-title">페이지를 찾을 수 없습니다</h1>
+    <p class="nf-lead">주소가 바뀌었거나 없어진 페이지예요. 아래에서 가려는 곳을 골라 주세요.</p>
     <div class="nf-actions">
       <a href="/" class="btn btn-primary">홈</a>
       <a href="/members" class="btn btn-bordered">멤버</a>
@@ -62,6 +63,13 @@ import Base from '../layouts/Base.astro';
     font-size: clamp(28px, 4vw, 40px);
     line-height: 1.2;
     font-weight: 700;
+  }
+  .nf-lead {
+    margin: 0;
+    max-width: 32em;
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--color-label-2);
   }
   .nf-actions {
     display: flex;

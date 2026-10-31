@@ -32,7 +32,7 @@ src/
   lib/image.ts           /img/ srcset(480/960/1600)
   pages/img/[...file].ts DB(image_files)의 사진을 dist/img/ 정적 파일로 내보냄
   components/            Header, TabBar, Footer, ScrollIntro, 카드, Picture, EmptyState, Filter, NavPerf
-  scripts/               intro.ts(GSAP), reveal.ts, header-bar.ts, segmented.ts(필터), nav-pending.ts(이동 스켈레톤)
+  scripts/               intro.ts(GSAP), header-bar.ts, segmented.ts(필터), nav-pending.ts(이동 스켈레톤)
   styles/                tokens.json(디자인 시스템 원본) → tokens.css(생성), global.css(Tailwind v4 @theme)
 public/intro/            인트로 사진 4장 + 달 고해상도 2장
 public/og.png            공유 카드·검색 미리보기 이미지(1200×630)
@@ -91,7 +91,7 @@ public/_headers          캐시 헤더(사이트 서버가 읽음)
 원칙과 근거는 [docs/design-references.md](../../docs/design-references.md)에 있다. 코드 위치만 적는다.
 
 - 토큰: `global.css`의 `--spring-smooth|snappy|bouncy`(+`-dur`), `--press-dur`, `--press-scale`, `--fade-dur`. JS는 `lib/motion.ts`의 `springEase()`.
-- 등장: `[data-reveal]`(묶음), `[data-reveal-item]`(묶음 안 순서대로 70ms씩) → `scripts/reveal.ts`
+- 등장: 스스로 움직이는 연출은 홈 인트로(달 → 로고)와 거기서 이어지는 소개 문단 밝아짐, 숫자 세기뿐이다. 구역마다 아래에서 올라오던 등장 효과와 모집 카드 확대는 한 장면에 힘을 모으려고 뺐다(2026-10-31).
 - 누름: `.btn`, `.pressable`, 탭 바 → 누르는 동안 0.97배, 떼면 snappy 스프링
 - 필터: 선택 표시가 미끄러짐(`scripts/segmented.ts`), 카드는 View Transition으로 새 자리로 이동(`lib/filter-dom.ts`)
 - 페이지 이동: `@view-transition { navigation: auto }` 크로스페이드, 헤더 내용·탭 바는 제자리. `view-transition-name`은 흐림이 걸린 요소 자신(탭 바 `ul`)이나 그 안쪽(헤더 `.site-header-inner`)에 둔다. 흐림 요소의 조상에 두면 그 조상이 backdrop root가 되어 Chromium에서 흐림이 사라진다.
