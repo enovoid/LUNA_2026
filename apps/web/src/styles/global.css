@@ -185,6 +185,22 @@
 
 /* 바탕·글자색과 color-scheme은 레이어 밖에 한 번 더 둔다. 레이어 밖 규칙은 레이어 안 규칙보다 우선하므로,
    페이지를 감싸는 환경(미리보기 등)이 레이어 없는 body { color: #000 } 같은 기본값을 넣어도 다크가 유지된다. */
+/* 대비 높이기(손쉬운 사용 → 대비 증가, prefers-contrast: more). HIG Accessibility: 시스템 설정을 켜면 더 높은 대비를 준다.
+   보조 글자를 거의 흰색으로, 유리는 거의 불투명하게, 강조 글자는 한 단계 더 밝게. */
+@media (prefers-contrast: more) {
+  :root.theme-dark,
+  [data-theme="dark"] {
+    --text-2: rgb(235 235 245 / 0.88);
+    --accent-text: #cdc5f7;
+    --fill-1: rgb(255 255 255 / 0.2);
+    --fill-2: rgb(255 255 255 / 0.14);
+  }
+  .glass {
+    background: rgb(44 44 46 / 0.96);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28);
+  }
+}
+
 :root:root {
   color-scheme: dark;
 }
@@ -332,6 +348,21 @@ html body {
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
     }
+  }
+
+  /* 작은 글자 링크·칩의 누르는 영역을 보이는 크기와 상관없이 44×44 이상으로 넓힌다(HIG Buttons: 최소 44pt).
+     겉모양과 자리는 그대로이고 투명한 ::after만 커진다(레이아웃 이동 없음). */
+  .tap {
+    position: relative;
+  }
+  .tap::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
   }
 
   /* 이미지 자리: 사진이 오기 전·실패했을 때 같은 크기를 유지한다(CLS 0) */

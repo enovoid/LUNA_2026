@@ -16,7 +16,7 @@ const { recruit } = (await loadSiteData()).settings;
 
 <header class:list={["site-header", overlay && "is-overlay"]} data-site-header data-bar={overlay ? "off" : "on"}>
   <div class="site-header-inner container-page">
-    <a href="/" class="brand" aria-label="LUNA 홈">
+    <a href="/" class="brand tap" aria-label="LUNA 홈">
       <span class="brand-logo" data-nav-logo><Logo size={30} /></span>
       <span class="brand-word" aria-hidden="true">LUNA</span>
     </a>
@@ -124,6 +124,17 @@ const { recruit } = (await loadSiteData()).settings;
     -webkit-backdrop-filter: blur(30px) saturate(1.8);
     backdrop-filter: blur(30px) saturate(1.8);
   }
+  /* 막대가 깔렸을 때는 알약이 막대 위에 유리를 한 겹 더 얹지 않는다(HIG Materials: 유리 위에 유리를 겹치지 않는다).
+     막대 자체가 흐림이므로 알약은 옅은 채움으로만 묶는다. 인트로 위(막대 없음)에서는 알약이 유일한 유리다. */
+  .site-header[data-bar="on"] .top-tabs ul {
+    background: var(--fill-2);
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .top-tabs ul {
+    transition: background-color var(--fade-dur) ease;
+  }
   .top-tabs a {
     display: inline-flex;
     align-items: center;
@@ -145,6 +156,19 @@ const { recruit } = (await loadSiteData()).settings;
     font-weight: 600;
   }
 
+  /* 투명도 줄이기·대비 높이기: 흐림 대신 불투명한 바탕(HIG Materials·Accessibility) */
+  @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    .site-header::before {
+      background: var(--bg);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .top-tabs ul {
+      background: var(--surface-1);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
   .header-cta {
     view-transition-name: site-cta;
   }

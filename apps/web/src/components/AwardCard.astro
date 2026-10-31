@@ -46,7 +46,7 @@ const dateText = formatDate(award.date);
               {relatedProjects.map((p, i) => (
                 <>
                   {i > 0 && ", "}
-                  <a href={`/projects?year=${encodeURIComponent(p.year)}`}>{p.name}</a>
+                  <a class="tap" href={`/projects?year=${encodeURIComponent(p.year)}`}>{p.name}</a>
                 </>
               ))}
             </dd>
@@ -64,7 +64,7 @@ const dateText = formatDate(award.date);
                   return (
                     <li>
                       {member ? (
-                        <a class="chip chip-link" href={`/members#${memberAnchor(member)}`}>
+                        <a class="chip chip-link tap" href={`/members#${memberAnchor(member)}`}>
                           {name}
                         </a>
                       ) : (
