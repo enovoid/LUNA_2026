@@ -160,7 +160,8 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
        기준값은 apps/web/README.md "스크롤 속도" */
     --travel: 3.35;
     height: calc(100vh * (var(--travel) + 1));
-    height: calc(100svh * (var(--travel) + 1));
+    /* 무대(.intro-stage)가 100lvh라 구역도 그만큼 더한다 → 고정 구간 길이는 그대로 100svh × travel */
+    height: calc(100svh * var(--travel) + 100lvh);
     background: var(--bg);
   }
   @media (max-aspect-ratio: 3/4) {
@@ -174,11 +175,14 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     }
   }
 
+  /* 무대는 큰 뷰포트(lvh) 높이. 모바일·태블릿 Chrome에서 스크롤로 주소창이 접히면 화면이 커지는데,
+     svh면 무대 아래에 빈 띠가 생기고 dvh면 스크롤 중에 무대 크기가 바뀌어 덜컹인다.
+     lvh는 고정값이라 크기가 안 바뀌고, 주소창이 보일 때는 아래 몇십 px이 화면 밖에 있을 뿐이다. */
   .intro-stage {
     position: sticky;
     top: 0;
     height: 100vh;
-    height: 100svh;
+    height: 100lvh;
     overflow: hidden;
     container-type: size;
     background: var(--bg);
@@ -443,6 +447,8 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     left: 0;
     right: 0;
     bottom: 32px;
+    /* 무대가 lvh라 주소창이 보이는 첫 화면에서도 보이게 그 차이만큼 올린다 */
+    bottom: calc(32px + 100lvh - 100svh);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -456,7 +462,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
   @media (max-width: 767px) {
     /* 하단 탭 바와 겹치지 않게 */
     .intro-hint {
-      bottom: calc(96px + env(safe-area-inset-bottom));
+      bottom: calc(96px + env(safe-area-inset-bottom) + 100lvh - 100svh);
     }
   }
 
@@ -466,6 +472,11 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
   :global(html:not(.js)) .intro {
     height: 100vh;
     height: 100svh;
+  }
+  /* 한 화면짜리 정적 장면은 고정이 없으니 무대가 구역을 그대로 채운다 */
+  .intro.is-static .intro-stage,
+  :global(html:not(.js)) .intro .intro-stage {
+    height: 100%;
   }
   .intro.is-static :is(.intro-layer, .intro-meteors, .intro-ring, .intro-hint),
   :global(html:not(.js)) .intro :is(.intro-layer, .intro-meteors, .intro-ring, .intro-hint) {
@@ -498,6 +509,9 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     .intro {
       height: 100vh;
       height: 100svh;
+    }
+    .intro-stage {
+      height: 100%;
     }
     .intro-layer,
     .intro-meteors,
