@@ -35,21 +35,21 @@ const homeFaqs = sortedFaqs.slice(0, 3);
 const intro = sortedFaqs[0]?.answer ?? '';
 const latestProjects = sortProjects(projects).slice(0, 6);
 const latestAwards = sortAwards(awards).slice(0, 3);
-// data-count: 화면에 들어오면 0부터 이 값까지 세어 올라간다(scripts/count-up.ts). JS가 없으면 처음부터 최종값.
+// 상금이 맨 앞(가장 큰 숫자로 넓게 놓인다). data-count: 화면에 들어오면 0부터 이 값까지 세어 올라간다(scripts/count-up.ts). JS가 없으면 처음부터 최종값.
 const statItems = [
+  {
+    value: formatWon(stats.prizeTotal),
+    count: stats.prizeTotal,
+    format: 'won',
+    unit: '',
+    label: '누적 상금',
+  },
   {
     value: `${stats.awardCount.toLocaleString('ko-KR')}회`,
     count: stats.awardCount,
     format: 'count',
     unit: '회',
     label: '수상',
-  },
-  {
-    value: formatWon(stats.prizeTotal),
-    count: stats.prizeTotal,
-    format: 'won',
-    unit: '',
-    label: '상금',
   },
   {
     value: `${stats.projectCount.toLocaleString('ko-KR')}개`,
@@ -86,23 +86,20 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
           </p>
         ))
       }
-      <div class="about-actions" data-reveal>
-        <a href="/projects" class="btn btn-primary">프로젝트</a>
-        <a href={recruiting === "none" ? "/faq" : "#apply"} class="btn btn-ghost">지원</a>
+      <div class="about-actions">
+        <a href="/projects" class="btn btn-primary">프로젝트 보기</a>
+        <a href={recruiting === "none" ? "/faq" : "#apply"} class="btn btn-ghost">지원 안내</a>
       </div>
     </div>
   </section>
 
   <div class="home-sections">
     <section aria-labelledby="stats-title" class="container-page section-stack">
-      <div class="headline" data-reveal>
-        <span class="eyebrow">BY THE NUMBERS</span>
-        <h2 id="stats-title">도전으로 증명해 온 기록</h2>
-      </div>
-      <ul class="stats" data-reveal>
+      <h2 id="stats-title">도전으로 증명해 온 기록</h2>
+      <ul class="stats">
         {
-          statItems.map((s, i) => (
-            <li class="stat card" data-reveal-item style={`--i:${i}`}>
+          statItems.map((s) => (
+            <li class:list={["stat", s.format === "won" && "stat-lead"]}>
               <span class="stat-value" data-count={s.count} data-count-format={s.format} data-count-unit={s.unit}>
                 {s.value}
               </span>
@@ -114,19 +111,16 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     </section>
 
     <section id="projects" aria-labelledby="projects-title" class="section-stack">
-      <div class="container-page section-head" data-reveal>
-        <div class="headline">
-          <span class="eyebrow">PROJECTS</span>
-          <h2 id="projects-title">프로젝트</h2>
-        </div>
+      <div class="container-page section-head">
+        <h2 id="projects-title">프로젝트</h2>
         {latestProjects.length > 0 && <a href="/projects" class="more-link">모두 보기</a>}
       </div>
       {
         latestProjects.length > 0 ? (
-          <div class="gallery container-page" data-gallery data-reveal>
+          <div class="gallery container-page" data-gallery>
             <ul class="gallery-track" data-gallery-track aria-label="최근 프로젝트">
-              {latestProjects.map((p, i) => (
-                <li class="gallery-item" data-reveal-item style={`--i:${i}`}>
+              {latestProjects.map((p) => (
+                <li class="gallery-item">
                   <ProjectCard project={p} compact headingLevel={3} />
                 </li>
               ))}
@@ -142,16 +136,15 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
           </div>
         ) : (
           <div class="container-page">
-            <EmptyState title="프로젝트가 없습니다" />
+            <EmptyState title="아직 올라온 프로젝트가 없어요" />
           </div>
         )
       }
     </section>
 
     <section id="awards" aria-labelledby="awards-title" class="container-page">
-      <div class="split" data-reveal>
+      <div class="split">
         <div class="split-aside">
-          <span class="eyebrow">AWARDS</span>
           <h2 id="awards-title">수상</h2>
           {latestAwards.length > 0 && <a href="/awards" class="more-link">모두 보기</a>}
         </div>
@@ -173,7 +166,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
                 ))}
               </ul>
             ) : (
-              <EmptyState title="수상 기록이 없습니다" />
+              <EmptyState title="아직 수상 기록이 없어요" />
             )
           }
         </div>
@@ -181,9 +174,8 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     </section>
 
     <section id="faq" aria-labelledby="faq-title" class="container-page">
-      <div class="split" data-reveal>
+      <div class="split">
         <div class="split-aside">
-          <span class="eyebrow">FAQ</span>
           <h2 id="faq-title">자주 묻는 질문</h2>
           {sortedFaqs.length > 0 && <a href="/faq" class="more-link">모두 보기</a>}
         </div>
@@ -192,7 +184,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
             homeFaqs.length > 0 ? (
               <FaqList faqs={homeFaqs} openFirst={1} idPrefix="home-faq" />
             ) : (
-              <EmptyState title="질문이 없습니다" message={contact.email || undefined} />
+              <EmptyState title="아직 올라온 질문이 없어요" message={contact.email || undefined} />
             )
           }
         </div>
@@ -205,7 +197,6 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
           <div class="apply">
             <Logo size={320} class="apply-mark" />
             <div class="apply-text">
-              <span class="apply-eyebrow">{recruiting === "closed" ? "CLOSED" : "RECRUITING"}</span>
               <h2 id="apply-title">LUNA {recruit.generation} {recruiting === "closed" ? "모집 마감" : "모집"}</h2>
               <p>{[recruitPeriod(recruit), recruit.target].filter(Boolean).join(" · ")}</p>
               {recruitNote && <p class="apply-note">{recruitNote}</p>}
@@ -288,19 +279,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     }
   }
 
-  /* 큰 제목 + 작은 영문 머리글(Apple 섹션 헤드라인) */
-  .headline {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .eyebrow {
-    font-size: 13px;
-    line-height: 18px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    color: var(--text-2);
-  }
+  /* 구역 제목: 머리글 없이 크고 굵은 제목 하나(내용이 곧 제목이다). */
   h2 {
     margin: 0;
     font-size: clamp(32px, 4.4vw, 48px);
@@ -326,34 +305,53 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     font-weight: 600;
   }
 
-  /* 숫자: 큰 그라데이션 숫자 + 작은 설명. 세어 올라가는 동안에도 칸 크기는 그대로(tabular-nums, 한 줄). */
-  /* 4칸: 좁으면 한 줄에 하나, 넓으면 2×2. 상금(₩…)이 길어서 한 줄 4칸은 넘친다. */
+  /* 숫자: 카드로 나누지 않고 바탕 위에 숫자 자체를 크게 둔다(Apple 제품 페이지의 수치 줄).
+     상금이 가장 길고 가장 큰 숫자라 맨 앞에 넓게 두고, 나머지 셋은 한 줄에 나란히. 좁은 화면에서도 세로로 4칸을 쌓지 않는다.
+     세어 올라가는 동안에도 칸 크기는 그대로(tabular-nums, 한 줄). */
   .stats {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 32px 16px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
+  .stat-lead {
+    grid-column: 1 / -1;
+  }
   @media (min-width: 900px) {
     .stats {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: 2fr repeat(3, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .stat-lead {
+      grid-column: auto;
     }
   }
   .stat {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 32px 28px;
+    gap: 4px;
+    min-width: 0;
   }
   .stat-value {
-    font-size: clamp(40px, 4.6vw, 56px);
+    font-size: clamp(30px, 9vw, 56px);
     line-height: 1.1;
     font-weight: 700;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+  }
+  .stat-lead .stat-value {
+    font-size: clamp(44px, 13vw, 72px);
+  }
+  @media (min-width: 900px) {
+    .stat-value {
+      font-size: 56px;
+    }
+    .stat-lead .stat-value {
+      font-size: 72px;
+    }
   }
   .stat-label {
     font-size: 17px;
@@ -441,11 +439,22 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     flex-wrap: wrap;
     gap: 24px 32px;
   }
+  /* 좁은 화면: 제목과 "모두 보기"를 프로젝트 구역처럼 한 줄 양 끝에. 넓은 화면: 왼쪽 칸에 위아래로. */
   .split-aside {
     flex: 1 1 280px;
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
     gap: 12px;
+  }
+  @media (min-width: 920px) {
+    .split-aside {
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
   }
   .split-main {
     flex: 999 1 560px;
@@ -504,7 +513,7 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     color: var(--color-label-2);
   }
 
-  /* 모집 카드: 화면에 들어오며 조금 작은 크기에서 제 크기로 커진다(스크롤에 묶임, Apple의 프레임 진입). */
+  /* 모집 카드 */
   .apply {
     position: relative;
     overflow: hidden;
@@ -522,25 +531,6 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
       padding: 48px;
     }
   }
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      .apply {
-        animation: frame-in linear both;
-        animation-timeline: view();
-        animation-range: entry 0% cover 35%;
-      }
-    }
-  }
-  @keyframes frame-in {
-    from {
-      opacity: 0.4;
-      transform: scale(0.92);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
   .apply :global(.apply-mark) {
     position: absolute;
     right: -60px;
@@ -553,13 +543,6 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     flex-direction: column;
     gap: 12px;
     max-width: 620px;
-  }
-  .apply-eyebrow {
-    font-size: 15px;
-    line-height: 20px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    color: var(--text-2);
   }
   .apply h2 {
     font-size: clamp(30px, 4vw, 40px);

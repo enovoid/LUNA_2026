@@ -22,7 +22,7 @@ const linkMember = memberLinker(members);
   <div class="container-page page-body" data-filter-scope="year">
     {
       groups.length === 0 ? (
-        <EmptyState title="수상 기록이 없습니다" />
+        <EmptyState title="아직 수상 기록이 없어요" />
       ) : (
         groups.map((g) => (
           <section class="year" data-filter-group aria-labelledby={`year-${g.year}`}>
@@ -40,7 +40,7 @@ const linkMember = memberLinker(members);
         ))
       )
     }
-    <EmptyState title="수상 기록이 없습니다" filterEmpty />
+    <EmptyState title="이 연도의 수상 기록이 없어요" message="다른 연도를 골라 보세요." filterEmpty />
   </div>
   <FilterBoot param="year" />
 </Base>
