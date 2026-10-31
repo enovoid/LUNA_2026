@@ -59,15 +59,16 @@ Notion ─(15분마다, 바뀐 페이지만)→ [이 서버: sync 자식 프로�
 2. [ ] New → **GitHub Repo** → `enovoid/LUNA_2026` 선택. Root Directory는 비워 둔다(저장소 루트)
 3. [ ] 새 서비스 **Variables**에 추가
 
-   | 이름                                                                        | 값                                                      |
-   | --------------------------------------------------------------------------- | ------------------------------------------------------- |
-   | `DATABASE_URL`                                                              | `${{Postgres.DATABASE_URL}}` (내부 주소 참조)           |
-   | `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET`                                   | 아래 "Google 로그인 만들기"에서 받은 값                 |
-   | `ADMIN_EMAILS`                                                              | 처음 들어올 운영진 Google 이메일(쉼표로 구분)           |
-   | `NOTION_TOKEN`                                                              | Notion integration 토큰                                 |
-   | `NOTION_DB_MEMBERS` `NOTION_DB_AWARDS` `NOTION_DB_PROJECTS` `NOTION_DB_FAQ` | 각 Notion DB ID                                         |
-   | `SITE_URL`                                                                  | (선택) 직접 연결한 도메인. 없으면 Railway 도메인을 쓴다 |
-   | `SYNC_INTERVAL_MINUTES`                                                     | (선택) 동기화 간격, 기본 15. 0이면 자동 동기화를 끈다   |
+   | 이름                                                                        | 값                                                                                 |
+   | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+   | `DATABASE_URL`                                                              | `${{Postgres.DATABASE_URL}}` (내부 주소 참조)                                      |
+   | `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET`                                   | 아래 "Google 로그인 만들기"에서 받은 값                                            |
+   | `ADMIN_EMAILS`                                                              | 처음 들어올 운영진 Google 이메일(쉼표로 구분)                                      |
+   | `NOTION_TOKEN`                                                              | Notion integration 토큰                                                            |
+   | `NOTION_DB_MEMBERS` `NOTION_DB_AWARDS` `NOTION_DB_PROJECTS` `NOTION_DB_FAQ` | 각 Notion DB ID                                                                    |
+   | `SITE_URL`                                                                  | (선택) 직접 연결한 도메인. 없으면 Railway 도메인을 쓴다                            |
+   | `SYNC_INTERVAL_MINUTES`                                                     | (선택) 동기화 간격, 기본 15. 0이면 자동 동기화를 끈다                              |
+   | `GOOGLE_SITE_VERIFICATION` `NAVER_SITE_VERIFICATION`                        | (선택) 검색 엔진 소유 확인 값. [검색 엔진 등록](../../docs/search-engines.md) 참고 |
 
 4. [ ] Settings → Networking → **Generate Domain**(또는 Custom Domain 연결)
 5. [ ] 배포가 끝나면(첫 배포는 사이트를 만드느라 2~4분) `https://<도메인>/`과 `https://<도메인>/admin/` 열어 보기

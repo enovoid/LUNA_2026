@@ -1,11 +1,13 @@
 ---
 import '../styles/global.css';
+import { GOOGLE_SITE_VERIFICATION, NAVER_SITE_VERIFICATION } from 'astro:env/server';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import NavPerf from '../components/NavPerf.astro';
 import TabBar from '../components/TabBar.astro';
-import { type NavKey, site } from '../content/site';
+import { type NavKey, nav, site } from '../content/site';
 import { loadSiteData } from '../lib/data';
+import { breadcrumbLd, homeLd, serializeLd } from '../lib/seo';
 
 interface Props {
   /** 페이지 제목. 비우면 사이트 기본 제목 */
@@ -15,6 +17,8 @@ interface Props {
   /** 홈: 헤더를 인트로 위에 겹친다 */
   overlayHeader?: boolean;
   noindex?: boolean;
+  /** 이 페이지만의 구조화 데이터(예: FAQ). 홈 정보와 빵부스러기는 여기서 알아서 넣는다. */
+  jsonLd?: Record<string, unknown>[];
 }
 
 const {
@@ -23,11 +27,23 @@ const {
   current,
   overlayHeader = false,
   noindex = false,
+  jsonLd = [],
 } = Astro.props;
 const fullTitle = title ? `${title} | 루나 LUNA` : site.title;
-const canonical = new URL(Astro.url.pathname, Astro.site);
+// build.format: 'file'이라 빌드 때 경로가 /members.html, /index.html로 들어온다. 사이트 서버가 .html 주소를
+// 확장자 없는 주소로 옮기므로(301) canonical·og:url도 실제 주소(/members, /)로 맞춘다.
+const canonical = new URL(Astro.url.pathname.replace(/(\/index)?\.html$/, '') || '/', Astro.site);
 const ogImage = new URL('/og.png', Astro.site);
-const { source } = await loadSiteData();
+const { source, settings } = await loadSiteData();
+const base = Astro.site ?? Astro.url;
+const navItem = nav.find((n) => n.key === current);
+const ld = noindex
+  ? []
+  : [
+      ...(current === 'home' ? homeLd(base, settings.contact) : []),
+      ...(navItem && current !== 'home' ? [breadcrumbLd(base, navItem.label, navItem.href)] : []),
+      ...jsonLd,
+    ];
 ---
 
 <!doctype html>
@@ -39,7 +55,11 @@ const { source } = await loadSiteData();
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <meta name="theme-color" content="#1c1c1e" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
+    {NAVER_SITE_VERIFICATION && <meta name="naver-site-verification" content={NAVER_SITE_VERIFICATION} />}
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="루나 LUNA" />
     <meta property="og:locale" content="ko_KR" />
@@ -47,10 +67,12 @@ const { source } = await loadSiteData();
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="어두운 배경 위의 루나 로고" />
     <meta name="twitter:card" content="summary_large_image" />
+    {ld.length > 0 && <script is:inline type="application/ld+json" set:html={serializeLd(ld.length === 1 ? ld[0] : ld)} />}
     <!-- JS가 켜져 있을 때만 등장 효과·인트로 애니메이션 초기 상태를 쓴다(첫 페인트 전에 실행). -->
     <script is:inline>document.documentElement.classList.add("js");</script>
     <NavPerf />

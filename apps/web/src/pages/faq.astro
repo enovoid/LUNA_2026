@@ -6,15 +6,17 @@ import PageHead from '../components/PageHead.astro';
 import Base from '../layouts/Base.astro';
 import { sortFaqs } from '../lib/content';
 import { loadSiteData } from '../lib/data';
+import { faqLd } from '../lib/seo';
 
 const { faqs, settings } = await loadSiteData();
 const sorted = sortFaqs(faqs);
+const ld = faqLd(sorted);
 const { email, instagram } = settings.contact;
 const { recruit } = settings;
 const isRecruiting = hasRecruit(recruit);
 ---
 
-<Base title="자주 묻는 질문" description="루나 자주 묻는 질문" current="faq">
+<Base title="자주 묻는 질문" description="루나(LUNA) 지원 방법, 활동, 모집에 대해 자주 묻는 질문과 답입니다." current="faq" jsonLd={ld ? [ld] : []}>
   <PageHead title="자주 묻는 질문" />
 
   <div class="container-page page-body">

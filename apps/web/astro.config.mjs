@@ -24,6 +24,17 @@ export default defineConfig({
         values: ['db', 'mock'],
         optional: true,
       }),
+      // Google Search Console·Naver 서치어드바이저 소유 확인 값(HTML 태그 방식의 content). 비우면 태그를 넣지 않는다.
+      GOOGLE_SITE_VERIFICATION: envField.string({
+        context: 'server',
+        access: 'public',
+        optional: true,
+      }),
+      NAVER_SITE_VERIFICATION: envField.string({
+        context: 'server',
+        access: 'public',
+        optional: true,
+      }),
       CI: envField.boolean({ context: 'server', access: 'public', default: false }),
     },
   },
