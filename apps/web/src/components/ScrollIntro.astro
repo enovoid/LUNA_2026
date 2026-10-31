@@ -87,6 +87,9 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
       <div class="intro-glow"></div>
     </div>
 
+    <!-- 별똥별(scripts/meteors.ts): 하늘 위, 도시 뒤 -->
+    <div class="intro-meteors" aria-hidden="true"><span class="meteor" data-meteor></span></div>
+
     <div class="intro-layer" data-layer="city" aria-hidden="true">
       {
         usePhotos ? (
@@ -141,6 +144,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
 
 <script>
   import "../scripts/intro";
+  import "../scripts/meteors";
 </script>
 
 <style>
@@ -224,6 +228,27 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     background: radial-gradient(circle, #efeaffcc 0%, #907fdf55 38%, #907fdf00 70%);
     opacity: 0;
     will-change: opacity;
+  }
+
+  /* 별똥별: 무대 좌표(px)로 움직인다. 평소엔 투명해 아무것도 그리지 않는다. */
+  .intro-meteors {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+  }
+  .meteor {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 120px;
+    height: 1.5px;
+    border-radius: 1px;
+    background: linear-gradient(to right, transparent, #efeaffe6 85%, #fff);
+    opacity: 0;
+    transform-origin: 100% 50%;
+    will-change: transform, opacity;
   }
 
   /* 사진이 없을 때의 임시 하늘·달·도시(같은 좌표) */
@@ -442,8 +467,8 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
     height: 100vh;
     height: 100svh;
   }
-  .intro.is-static :is(.intro-layer, .intro-ring, .intro-hint),
-  :global(html:not(.js)) .intro :is(.intro-layer, .intro-ring, .intro-hint) {
+  .intro.is-static :is(.intro-layer, .intro-meteors, .intro-ring, .intro-hint),
+  :global(html:not(.js)) .intro :is(.intro-layer, .intro-meteors, .intro-ring, .intro-hint) {
     display: none;
   }
   .intro.is-static :is(.intro-dark, .lockup-logo-inner, .wordmark, .intro-title, .intro-fade),
@@ -475,6 +500,7 @@ const sinceYear = site.foundedYear ? ` · SINCE ${site.foundedYear}` : '';
       height: 100svh;
     }
     .intro-layer,
+    .intro-meteors,
     .intro-ring,
     .intro-hint {
       display: none;
