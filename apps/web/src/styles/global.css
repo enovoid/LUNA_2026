@@ -262,7 +262,7 @@ html body {
   }
   @media (min-width: 768px) {
     .container-page {
-      padding-inline: 24px;
+      padding-inline: var(--margin-regular);
     }
   }
 
@@ -272,7 +272,7 @@ html body {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 50px;
+    height: var(--button-height-large);
     padding: 0 24px;
     border-radius: 1000px;
     font-size: 17px;
@@ -287,6 +287,7 @@ html body {
     text-decoration: none;
     filter: brightness(1.08);
   }
+  /* 디자인 시스템의 중간 버튼은 34px이지만 HIG 최소 누르는 영역(44pt)을 우선해 44px로 둔다. */
   .btn-sm {
     height: 44px;
     padding: 0 20px;
