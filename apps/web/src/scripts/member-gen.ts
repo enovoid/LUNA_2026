@@ -1,3 +1,5 @@
+import { fadeIn } from '../lib/filter-dom';
+
 // 기수 탭: 한 번에 한 기수만 보여 준다(예전 루나 사이트와 같은 방식). 선택은 ?gen=8 로 URL에 남는다.
 // 첫 페인트 전 적용은 members.astro의 인라인 스크립트가 하고, 여기서는 누름·키보드·해시 링크를 맡는다.
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-gen-tab]')];
@@ -21,9 +23,11 @@ function selectGen(key: string, opts?: { focus?: boolean }) {
   else url.searchParams.set('gen', key);
   url.hash = '';
   history.replaceState(history.state, '', url);
-  // 명단이 통째로 바뀌므로 크로스페이드로 잇는다(지원하지 않으면 바로 바꿈).
-  if (document.startViewTransition) document.startViewTransition(() => showGen(key, opts));
-  else showGen(key, opts);
+  showGen(key, opts);
+  // 명단이 통째로 바뀌므로 새 명단을 흐릿하게 띄운다. View Transition은 쓰지 않는다:
+  // 화면 전체 스냅숏을 바꿔 끼우는 동안 Android Chrome·Brave에서 스크롤된 sticky 헤더가 사라졌다 나타났다(lib/filter-dom.ts).
+  const panel = panels.find((p) => p.dataset.genPanel === key);
+  if (panel) fadeIn(panel);
 }
 
 for (const [i, t] of tabs.entries()) {
