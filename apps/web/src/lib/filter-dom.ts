@@ -22,44 +22,70 @@ export function applyFilter(param: string, value: string) {
 }
 
 /**
- * applyFilter와 같지만, 지원하는 브라우저에서는 View Transition으로 카드가 새 자리로 미끄러지고
- * 사라지는 카드는 흐려지며 빠진다(HIG: 바뀐 내용의 출처를 보여 주는 공간 연속성).
- * 동작 줄이기면 카드 이름을 붙이지 않아 화면 전체가 크로스페이드만 한다.
+ * applyFilter와 같지만, 남는 카드는 새 자리로 미끄러지고(FLIP) 새로 나타난 카드는 흐릿하게 떠오른다
+ * (HIG: 바뀐 내용의 출처를 보여 주는 공간 연속성). 동작 줄이기면 새 카드가 흐려지며 나타나기만 한다.
+ *
+ * View Transition(document.startViewTransition)은 쓰지 않는다. 화면 전체를 스냅숏으로 바꿔 끼우는 동안
+ * Android Chrome·Brave(태블릿)에서 스크롤된 상태의 sticky 헤더가 스냅숏에서 빠져 내비게이션이 사라졌다 나타났다.
+ * 카드 요소만 직접 움직이면 헤더는 실제 DOM 그대로 남아 있어 깜빡일 일이 없다.
  */
 export function applyFilterWithTransition(param: string, value: string) {
   const scope = document.querySelector<HTMLElement>(`[data-filter-scope="${param}"]`);
-  if (!scope || !document.startViewTransition) return applyFilter(param, value);
+  if (!scope || typeof scope.animate !== 'function') return applyFilter(param, value);
   const items = [...scope.querySelectorAll<HTMLElement>('[data-filter-item]')];
-  const shown = items.filter((item) => value === ALL || item.dataset[param] === value).length;
+  const before = new Map<HTMLElement, DOMRect>();
+  for (const el of items) if (!el.hidden) before.set(el, el.getBoundingClientRect());
+  const shown = applyFilter(param, value);
+
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // 화면 밖 카드까지 이름을 붙이면 캡처가 무거워지므로 보이는 범위 근처만 움직인다.
-  const near = (el: HTMLElement) => {
+  const { duration, easing } = smoothSpring();
+  for (const el of items) {
+    if (el.hidden) continue;
     const r = el.getBoundingClientRect();
-    return r.bottom > -window.innerHeight && r.top < window.innerHeight * 2;
-  };
-  const named = reduce ? [] : items.filter((el) => !el.hidden && near(el));
-  named.forEach((el, i) => {
-    el.style.viewTransitionName = `filter-item-${i}`;
-  });
-  // 이름 붙은 카드는 루트 스냅숏 위에 그려진다. 헤더 유리 막대는 루트에 속해 있어 그대로 두면 전환 동안
-  // 카드가 막대를 덮어 헤더가 사라졌다 나타나 보인다. 전환 동안만 헤더도 이름을 붙여 카드 위에 둔다.
-  // 이름이 붙으면 막대의 흐림이 뒤를 못 보므로(backdrop root) 그동안은 막대를 불투명하게 칠한다(Header.astro).
-  const header = document.querySelector<HTMLElement>('[data-site-header]');
-  if (header && named.length > 0) {
-    header.style.viewTransitionName = 'site-header';
-    header.dataset.solid = '';
-  }
-  const transition = document.startViewTransition(() => {
-    applyFilter(param, value);
-  });
-  transition.finished.finally(() => {
-    for (const el of named) el.style.viewTransitionName = '';
-    if (header) {
-      header.style.viewTransitionName = '';
-      delete header.dataset.solid;
+    // 화면 밖 카드는 움직여도 보이지 않으므로 건너뛴다.
+    if (r.bottom < -window.innerHeight || r.top > window.innerHeight * 2) continue;
+    const prev = before.get(el);
+    if (!prev) {
+      const from = reduce ? { opacity: 0 } : { opacity: 0, transform: 'scale(0.96)' };
+      animate(el, [from, { opacity: 1, transform: 'none' }], { duration, easing });
+      continue;
     }
-  });
+    const dx = prev.left - r.left;
+    const dy = prev.top - r.top;
+    if (reduce || (Math.abs(dx) < 1 && Math.abs(dy) < 1)) continue;
+    animate(el, [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
+      duration,
+      easing,
+    });
+  }
   return shown;
+}
+
+/** 새로 보이는 영역을 흐릿하게 띄운다(기수 탭처럼 내용을 통째로 바꿀 때). */
+export function fadeIn(el: HTMLElement) {
+  if (typeof el.animate !== 'function') return;
+  animate(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 250, easing: 'ease' });
+}
+
+// global.css의 --spring-smooth(linear() 이징)와 길이를 그대로 쓴다.
+function smoothSpring() {
+  const css = getComputedStyle(document.documentElement);
+  const dur = Number.parseFloat(css.getPropertyValue('--spring-smooth-dur'));
+  return {
+    duration: Number.isFinite(dur) && dur > 0 ? dur * 1000 : 500,
+    easing: css.getPropertyValue('--spring-smooth').trim() || 'ease',
+  };
+}
+
+function animate(el: HTMLElement, frames: Keyframe[], options: KeyframeAnimationOptions) {
+  // 진행 중이던 애니메이션은 끊고 새 자리에서 다시 시작한다.
+  for (const a of el.getAnimations()) a.cancel();
+  try {
+    el.animate(frames, options);
+  } catch {
+    // linear() 이징을 모르는 브라우저
+    el.animate(frames, { ...options, easing: 'ease' });
+  }
 }
 
 export function readParam(param: string, options: readonly string[]) {
