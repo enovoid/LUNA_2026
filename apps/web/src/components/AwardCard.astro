@@ -91,7 +91,8 @@ const dateText = formatDate(award.date);
   }
   .award :global(.award-photo) {
     flex: 1 1 100%;
-    border-radius: 18px;
+    /* 동심 모서리: 카드 반경 − 안쪽 여백(HIG Liquid Glass의 concentric shape) */
+    border-radius: 10px; /* 26 − 16 */
   }
   @media (min-width: 768px) {
     .award {
@@ -99,6 +100,7 @@ const dateText = formatDate(award.date);
     }
     .award :global(.award-photo) {
       flex: 0 0 240px;
+      border-radius: 6px; /* 26 − 20 */
     }
   }
   .award-body {
