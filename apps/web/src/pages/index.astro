@@ -231,15 +231,19 @@ const aboutParagraphs = (intro ? textToParagraphs(intro) : ['세상을 비추는
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 28px;
+    gap: 40px;
     text-align: center;
   }
+  /* 한 문단짜리 긴 문장이라 제목처럼 크고 굵게 두면 줄마다 눈이 멀리 오가야 하고 획이 뭉친다.
+     title-2~title-1 토큰(22~28px) 사이 크기, 굵기 600(title-3 emphasized와 같은 단계), 넉넉한 줄 간격, 한 줄 24자 안팎으로 읽는 글의 리듬을 맞춘다. */
   .about-text {
     margin: 0;
-    font-size: clamp(24px, 3.6vw, 44px);
-    line-height: 1.4;
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    max-width: 24em;
+    font-size: clamp(20px, 1rem + 1vw, 28px);
+    line-height: 1.6;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    text-wrap: pretty;
   }
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
